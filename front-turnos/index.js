@@ -1,191 +1,207 @@
-const API_URL = 'http://localhost:3000/api/turnos';
-const REFRESH_INTERVAL_MS = 60000;
+const API_BASE_URL = 'http://localhost:3000';
+const TOKEN_KEY = 'turnos_token';
 
-let calendarInstance;
+let calendar;
 
-function setupDarkMode() {
-  const html = document.documentElement;
-  const btnModoOscuro = document.getElementById('modoOscuroBtn');
-
-  btnModoOscuro?.addEventListener('click', () => {
-    html.classList.toggle('dark');
-    setTimeout(() => {
-      btnModoOscuro.style.background = btnModoOscuro.style.background === 'bisque' ? 'white' : 'bisque';
-      btnModoOscuro.style.color = btnModoOscuro.style.color === 'black' ? 'white' : 'black';
-      btnModoOscuro.textContent = btnModoOscuro.textContent === '☀️' ? '🌙' : '☀️';
-    }, 200);
-  });
+function getToken() {
+  return localStorage.getItem(TOKEN_KEY);
 }
 
-function mostrarAlerta(mensaje, esError = false) {
-  const alerta = document.getElementById('alerta');
-  if (!alerta) {
-    return;
+function showAuthState(message, isError = false) {
+  const box = document.getElementById('estadoAuth');
+  if (!box) return;
+
+  box.textContent = message;
+  box.classList.remove('hidden', 'bg-red-100', 'text-red-700', 'bg-green-100', 'text-green-700', 'bg-yellow-100', 'text-yellow-700');
+
+  if (isError) {
+    box.classList.add('bg-red-100', 'text-red-700');
+  } else {
+    box.classList.add('bg-green-100', 'text-green-700');
   }
-
-  alerta.textContent = mensaje;
-  alerta.classList.remove('hidden');
-  alerta.classList.toggle('bg-green-500', !esError);
-  alerta.classList.toggle('bg-red-500', esError);
-
-  setTimeout(() => {
-    alerta.classList.add('hidden');
-  }, 3000);
 }
 
-async function fetchTurnos() {
-  try {
-    const response = await fetch(API_URL);
-    if (!response.ok) {
-      throw new Error(`No se pudieron obtener los turnos (${response.status})`);
+function showTurnoMessage(message, isError = true) {
+  const box = document.getElementById('turnoAlert');
+  if (!box) return;
+
+  box.textContent = message;
+  box.classList.remove('hidden', 'bg-red-100', 'text-red-700', 'bg-green-100', 'text-green-700');
+  box.classList.add(isError ? 'bg-red-100' : 'bg-green-100');
+  box.classList.add(isError ? 'text-red-700' : 'text-green-700');
+}
+
+/**
+ * Wrapper de fetch:
+ * - Siempre usa API en http://localhost:3000
+ * - Si includeAuth = true agrega Authorization: Bearer <token>
+ * - Devuelve JSON o lanza error con mensaje del backend
+ */
+async function apiFetch(path, options = {}, includeAuth = false) {
+  const headers = {
+    'Content-Type': 'application/json',
+    ...(options.headers || {})
+  };
+
+  if (includeAuth) {
+    const token = getToken();
+    if (!token) {
+      throw new Error('No hay token. Iniciá sesión nuevamente.');
     }
 
-    return await response.json();
-  } catch (error) {
-    console.error('Error al consultar turnos:', error);
-    mostrarAlerta('❌ Error al cargar turnos', true);
-    return [];
-  }
-}
-
-function mapTurnosToEvents(turnos) {
-  const inicioHoy = new Date();
-  inicioHoy.setHours(0, 0, 0, 0);
-
-  return turnos
-    .map((turno) => {
-      const horaNormalizada = turno.hora?.slice(0, 8) || '00:00:00';
-      const start = `${turno.fecha}T${horaNormalizada}`;
-      const inicioTurno = new Date(start);
-
-      return {
-        id: turno.id,
-        title: `${turno.cliente} - ${turno.servicio}`,
-        start,
-        extendedProps: {
-          cliente: turno.cliente,
-          servicio: turno.servicio,
-          fecha: turno.fecha,
-          hora: horaNormalizada,
-          canDelete: false
-        },
-        _inicioTurno: inicioTurno
-      };
-    })
-    .filter((evento) => !Number.isNaN(evento._inicioTurno.getTime()) && evento._inicioTurno >= inicioHoy)
-    .map(({ _inicioTurno, ...evento }) => evento);
-}
-
-function getTodayString() {
-  const hoy = new Date();
-  const year = hoy.getFullYear();
-  const month = String(hoy.getMonth() + 1).padStart(2, '0');
-  const day = String(hoy.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-}
-
-function initCalendar() {
-  const calendarElement = document.getElementById('calendar');
-  if (!calendarElement) {
-    throw new Error('No se encontró el contenedor #calendar');
+    // Ejemplo explícito de envío de token JWT al backend.
+    headers.Authorization = `Bearer ${token}`;
   }
 
-  const calendar = new FullCalendar.Calendar(calendarElement, {
-    initialView: 'timeGridWeek',
-    locale: 'es',
-    nowIndicator: true,
-    slotMinTime: '08:00:00',
-    slotMaxTime: '20:00:00',
-    allDaySlot: false,
-    validRange: {
-      start: getTodayString()
-    },
-    headerToolbar: {
-      left: 'prev,next today',
-      center: 'title',
-      right: 'dayGridMonth,timeGridWeek,timeGridDay'
-    },
-    events: [],
-    eventClick: (info) => {
-      const { cliente, servicio, fecha, hora } = info.event.extendedProps;
-      alert(`Cliente: ${cliente}\nServicio: ${servicio}\nFecha: ${fecha}\nHora: ${hora}`);
-
-      // Estructura preparada para futura eliminación.
-      // Ejemplo futuro: solicitar confirmación y llamar DELETE /api/turnos/:id
-      const deletePayload = {
-        turnoId: info.event.id,
-        canDelete: info.event.extendedProps.canDelete
-      };
-      console.debug('Eliminación pendiente de implementar:', deletePayload);
-    }
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    ...options,
+    headers
   });
 
-  calendar.render();
-  return calendar;
+  const data = await response.json().catch(() => ({}));
+
+  if (!response.ok) {
+    throw new Error(data.error || `Error ${response.status}`);
+  }
+
+  return data;
 }
 
-async function refreshCalendarEvents(calendar) {
-  const turnos = await fetchTurnos();
-  const events = mapTurnosToEvents(turnos);
+function mapTurnoToEvent(turno) {
+  const hora = turno.hora?.slice(0, 8) || '00:00:00';
+  return {
+    id: String(turno.id),
+    title: `${turno.cliente} - ${turno.servicio}`,
+    start: `${turno.fecha}T${hora}`,
+    extendedProps: {
+      cliente: turno.cliente,
+      servicio: turno.servicio,
+      fecha: turno.fecha,
+      hora
+    }
+  };
+}
+
+async function loadTurnosIntoCalendar() {
+  const turnos = await apiFetch('/turnos', { method: 'GET' }, true);
+  const events = turnos.map(mapTurnoToEvent);
 
   calendar.removeAllEvents();
   calendar.addEventSource(events);
 }
 
-async function registrarTurno(event) {
+async function deleteTurno(turnoId) {
+  await apiFetch(`/turnos/${turnoId}`, { method: 'DELETE' }, true);
+  await loadTurnosIntoCalendar();
+}
+
+function initCalendar() {
+  const calendarEl = document.getElementById('calendar');
+
+  calendar = new FullCalendar.Calendar(calendarEl, {
+    initialView: 'dayGridMonth',
+    locale: 'es',
+    headerToolbar: {
+      left: 'prev,next today',
+      center: 'title',
+      right: 'dayGridMonth,timeGridWeek,timeGridDay'
+    },
+    eventClick: async (info) => {
+      const event = info.event;
+      const ok = window.confirm(`¿Eliminar el turno de ${event.extendedProps.cliente} (${event.extendedProps.servicio})?`);
+
+      if (!ok) return;
+
+      try {
+        await deleteTurno(event.id);
+        showAuthState('Turno eliminado correctamente.');
+      } catch (error) {
+        showAuthState(error.message, true);
+      }
+    }
+  });
+
+  calendar.render();
+}
+
+function openModal() {
+  document.getElementById('modalTurno')?.classList.remove('hidden');
+  document.getElementById('modalTurno')?.classList.add('flex');
+}
+
+function closeModal() {
+  const modal = document.getElementById('modalTurno');
+  modal?.classList.add('hidden');
+  modal?.classList.remove('flex');
+  document.getElementById('formTurno')?.reset();
+  document.getElementById('turnoAlert')?.classList.add('hidden');
+}
+
+async function handleCreateTurno(event) {
   event.preventDefault();
 
   const cliente = document.getElementById('cliente')?.value?.trim();
   const servicio = document.getElementById('servicio')?.value?.trim();
   const fecha = document.getElementById('fecha')?.value;
-  const horaInput = document.getElementById('hora')?.value;
-
-  if (!cliente || !servicio || !fecha || !horaInput) {
-    mostrarAlerta('❌ Completá todos los campos', true);
-    return;
-  }
-
-  const hora = horaInput.length === 5 ? `${horaInput}:00` : horaInput;
+  const horaRaw = document.getElementById('hora')?.value;
+  const hora = horaRaw && horaRaw.length === 5 ? `${horaRaw}:00` : horaRaw;
 
   try {
-    const response = await fetch(API_URL, {
+    await apiFetch('/turnos', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
       body: JSON.stringify({ cliente, servicio, fecha, hora })
-    });
+    }, true);
 
-    const data = await response.json();
+    showTurnoMessage('Turno creado correctamente.', false);
+    await loadTurnosIntoCalendar();
 
-    if (!response.ok) {
-      throw new Error(data?.mensaje || 'Error al guardar turno');
-    }
-
-    document.getElementById('form-turno')?.reset();
-    mostrarAlerta('✅ Su turno se ha reservado correctamente');
-    await refreshCalendarEvents(calendarInstance);
+    setTimeout(() => {
+      closeModal();
+      showAuthState('Calendario actualizado.');
+    }, 500);
   } catch (error) {
-    console.error('Error al reservar turno:', error);
-    mostrarAlerta(`❌ ${error.message}`, true);
+    showTurnoMessage(error.message, true);
   }
 }
 
-document.addEventListener('DOMContentLoaded', async () => {
-  setupDarkMode();
+function setupUiEvents() {
+  document.getElementById('btnNuevoTurno')?.addEventListener('click', openModal);
+  document.getElementById('cerrarModal')?.addEventListener('click', closeModal);
+  document.getElementById('cancelarTurno')?.addEventListener('click', closeModal);
+  document.getElementById('formTurno')?.addEventListener('submit', handleCreateTurno);
 
-  try {
-    calendarInstance = initCalendar();
-    await refreshCalendarEvents(calendarInstance);
+  document.getElementById('btnLogout')?.addEventListener('click', () => {
+    localStorage.removeItem(TOKEN_KEY);
+    window.location.href = 'login/login.html';
+  });
+}
 
-    setInterval(() => {
-      refreshCalendarEvents(calendarInstance);
-    }, REFRESH_INTERVAL_MS);
-  } catch (error) {
-    console.error('Error al inicializar calendario:', error);
-    mostrarAlerta('❌ No se pudo inicializar el calendario', true);
+async function bootstrap() {
+  setupUiEvents();
+  initCalendar();
+
+  const token = getToken();
+  if (!token) {
+    showAuthState('No hay sesión activa. Redirigiendo al login...', true);
+    setTimeout(() => {
+      window.location.href = 'login/login.html';
+    }, 900);
+    return;
   }
 
-  const form = document.getElementById('form-turno');
-  form?.addEventListener('submit', registrarTurno);
-});
+  try {
+    await loadTurnosIntoCalendar();
+    showAuthState('Sesión autenticada.');
+  } catch (error) {
+    showAuthState(error.message, true);
+
+    if (error.message.toLowerCase().includes('token') || error.message.toLowerCase().includes('denegado')) {
+      localStorage.removeItem(TOKEN_KEY);
+      setTimeout(() => {
+        window.location.href = 'login/login.html';
+      }, 900);
+    }
+  }
+}
+
+document.addEventListener('DOMContentLoaded', bootstrap);

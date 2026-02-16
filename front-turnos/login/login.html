@@ -1,65 +1,39 @@
 <!DOCTYPE html>
 <html lang="es">
-
 <head>
   <meta charset="UTF-8" />
-  <title>Login - Estética Bella</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Login | Turnos</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <script>
-    tailwind.config = {
-      darkMode: 'class',
-    };
-  </script>
-  <style>
-    body {
-	background: 
-		  linear-gradient(135deg,#0000 20.5%,#c5c5ce 0 29.5%,#0000 0) 0 31.5px,
-		  linear-gradient( 45deg,#0000 8%,#c5c5ce 0 17%, #0000 0 58%) 63px 0,
-		  linear-gradient(135deg,#0000 8%,#c5c5ce 0 17%, #0000 0 58%,#c5c5ce 0 67%,#0000 0),        
-		  linear-gradient( 45deg,#0000 8%,#c5c5ce 0 17%, #0000 0 58%,#c5c5ce 0 67%,#0000 0 83%,#c5c5ce 0 92%,#0000 0),
-		  #863c78;
-	background-size: 126px 126px;
-}
-  </style>
+  <script defer src="login.js"></script>
 </head>
+<body class="min-h-screen bg-slate-100 flex items-center justify-center px-4">
+  <main class="w-full max-w-md bg-white rounded-2xl shadow-xl p-8">
+    <h1 class="text-2xl font-bold text-slate-800">Iniciar sesión</h1>
+    <p class="text-sm text-slate-500 mt-1">Accedé con tu cuenta para gestionar turnos.</p>
 
-<body
-  class="bg-pink-900 dark:bg-gray-900 text-gray-800 dark:text-gray-100 font-sans transition-colors min-h-screen flex items-center justify-center">
+    <form id="loginForm" class="mt-6 space-y-4">
+      <div>
+        <label for="email" class="block text-sm font-medium text-slate-700">Email</label>
+        <input id="email" type="email" required class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 focus:border-slate-600 focus:outline-none" />
+      </div>
 
-  <main class="w-full max-w-sm bg-gray-100 dark:bg-gray-800 p-8 rounded-2xl shadow-lg">
-    <h1 class="text-3xl font-bold text-center text-pink-600 dark:text-pink-400 mb-6">Estética Bella</h1>
-    <h2 class="text-xl font-semibold text-center mb-4">
-      Iniciar sesión
-      <button id="modoOscuroBtn"
-        class="bg-gray-900 dark:bg-gray-700 dark:text-white text-pink-600 rounded-lg shadow hover:scale-105 transition">
-        🌙
+      <div>
+        <label for="password" class="block text-sm font-medium text-slate-700">Contraseña</label>
+        <input id="password" type="password" required class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 focus:border-slate-600 focus:outline-none" />
+      </div>
+
+      <button type="submit" class="w-full rounded-lg bg-slate-900 text-white py-2.5 font-medium hover:bg-slate-700 transition">
+        Entrar
       </button>
-    </h2>
-
-    <form id="loginForm" class="space-y-4">
-      <div>
-        <label for="email" class="block text-sm mb-1">Correo electrónico</label>
-        <input type="email" id="email"
-          class="w-full p-2 rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700" required>
-      </div>
-
-      <div>
-        <label for="password" class="block text-sm mb-1">Contraseña</label>
-        <input type="password" id="password"
-          class="w-full p-2 rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700" required>
-      </div>
-
-      <button type="submit"
-        class="w-full bg-pink-600 text-white py-2 rounded-lg hover:bg-pink-700 transition">Entrar</button>
     </form>
-    
-    <div class="border bt-gray-800 m-4"></div>
 
-    <a href="../usuarios/registro.html" class="flex justify-center aling-center bg-green-700 text-white py-2 rounded-lg hover:bg-green-800 transition">Crear Usuario</a>
+    <p id="loginAlert" class="hidden mt-4 rounded-lg px-3 py-2 text-sm"></p>
 
-    <div id="loginAlert" class="hidden mt-4 text-sm text-center text-red-500">Credenciales incorrectas</div>
+    <div class="mt-6 text-sm text-center">
+      <span class="text-slate-600">¿No tenés cuenta?</span>
+      <a href="../usuarios/registro.html" class="text-blue-600 font-semibold hover:underline">Registrate</a>
+    </div>
   </main>
-  <script type="module" src="login.js"></script>
 </body>
-
 </html>
