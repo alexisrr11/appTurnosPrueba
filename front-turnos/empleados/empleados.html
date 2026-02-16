@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8">
+  <title>Turnos - Empleados</title>
+  <script src="empleados.js" type="module" defer></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://cdn.tailwindcss.com" rel="stylesheet" />
+  <script>
+    tailwind.config = {
+      darkMode: 'class'
+    }
+  </script>
+</head>
+
+<body class="bg-pink-50 text-gray-800 dark:bg-gray-900 dark:text-gray-100 font-sans transition-colors">
+
+  <!-- Header -->
+  <header class="bg-pink-600 dark:bg-gray-800 text-white py-6 shadow-lg">
+    <div class="flex justify-between items-center max-w-4xl mx-auto px-4">
+      <div>
+        <h1 class="text-3xl font-bold">Estética Bella</h1>
+        <p class="text-sm">Turnos para la semama</p>
+      </div>
+      <button id="modoOscuroBtn"
+        class="bg-white dark:bg-gray-700 dark:text-white text-pink-600 px-3 py-1 rounded-lg shadow hover:scale-105 transition">
+        🌙
+      </button>
+    </div>
+  </header>
+  <main class=" lg:grid grid-cols-2 gap-5">
+
+  <section class="  mt-6 bg-white dark:bg-gray-800 p-4 rounded-xl shadow-md">
+    <h2 class="text-lg font-semibold mb-2">Turnos de Hoy</h2>
+    <p>Total: <span id="total-turnos-hoy" class="font-bold text-pink-600">0</span></p>
+    <ul id="turnos-hoy" class="mt-2 space-y-2">
+      <!-- Turnos de hoy se insertan aquí -->
+    </ul>
+  </section>
+  
+  <!-- Formulario de Turno -->
+  <!-- Lista de Turnos -->
+  <section class="mt-6 bg-white dark:bg-gray-800 p-4 rounded-xl shadow-md">
+    
+    <h2 class="text-lg font-semibold mb-2">Buscar Turnos</h2>
+    <div class="flex flex-col gap-3">
+      <input id="busqueda-nombre" type="text" placeholder="Buscar por nombre..."
+        class="p-2 rounded border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white" />
+      <input id="busqueda-fecha" type="date"
+        class="p-2 rounded border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white" />
+    </div>
+    <h2 class="text-lg font-semibold mb-2 pt-5">Turnos Agendados</h2>
+    <ul id="lista-turnos" class="space-y-2">
+      <!-- Turnos se insertan aquí -->
+    </ul>
+  </section>
+  </main>
+  <div id="contenedor"></div>
+  <div id="alerta" class="hidden fixed top-4 right-4 bg-green-500 text-white px-4 py-2 rounded shadow"></div>
+</body>
+
+</html>
