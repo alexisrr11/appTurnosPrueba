@@ -68,15 +68,21 @@ async function apiFetch(path, options = {}, includeAuth = false) {
 }
 
 function mapTurnoToEvent(turno) {
-  const hora = turno.hora?.slice(0, 8) || '00:00:00';
+  const fecha = String(turno.fecha || '').slice(0, 10);
+  const hora = String(turno.hora || '').slice(0, 8) || '00:00:00';
+
+  if (!fecha) {
+    throw new Error('El turno no tiene una fecha válida para renderizarse en el calendario.');
+  }
+
   return {
     id: String(turno.id),
     title: `${turno.cliente} - ${turno.servicio}`,
-    start: `${turno.fecha}T${hora}`,
+    start: `${fecha}T${hora}`,
     extendedProps: {
       cliente: turno.cliente,
       servicio: turno.servicio,
-      fecha: turno.fecha,
+      fecha,
       hora
     }
   };
