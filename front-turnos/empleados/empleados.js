@@ -137,7 +137,7 @@ async function validateTokenOrRedirect() {
 
   if (!response.ok) {
     localStorage.removeItem(TOKEN_KEY);
-    window.location.href = '/loginAdmins/loginAdmin.html';
+    window.location.href = '../loginAdmin/loginAdmin.html';
     return false;
   }
 
@@ -163,7 +163,7 @@ function bindEvents() {
 
   document.getElementById('logoutBtn').addEventListener('click', () => {
     localStorage.removeItem(TOKEN_KEY);
-    window.location.href = '/loginAdmins/loginAdmin.html';
+    window.location.href = './login.html';
   });
 
   wireTableActions();

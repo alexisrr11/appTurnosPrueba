@@ -71,7 +71,6 @@ function mapTurnoToEvent(turno) {
   const hora = turno.hora?.slice(0, 8) || '00:00:00';
   return {
     id: String(turno.id),
-    title: `${turno.cliente} - ${turno.servicio}`,
     start: `${turno.fecha}T${hora}`,
     extendedProps: {
       servicio: turno.servicio,
@@ -105,18 +104,9 @@ function initCalendar() {
       center: 'title',
       right: 'dayGridMonth,timeGridWeek,timeGridDay'
     },
-    eventClick: async (info) => {
+    eventClick: (info) => {
       const event = info.event;
-      const ok = window.confirm(`¿Eliminar el turno de ${event.extendedProps.cliente} (${event.extendedProps.servicio})?`);
-
-      if (!ok) return;
-
-      try {
-        await deleteTurno(event.id);
-        showAuthState('Turno eliminado correctamente.');
-      } catch (error) {
-        showAuthState(error.message, true);
-      }
+      alert(`Turno: ${event.title}\nFecha: ${event.start.toISOString().slice(0,10)}\nHora: ${event.start.toISOString().slice(11,16)}`);
     }
   });
 

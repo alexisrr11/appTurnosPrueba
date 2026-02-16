@@ -31,7 +31,7 @@ async function login(event) {
     localStorage.setItem(TOKEN_KEY, data.token);
     showMessage('Login correcto. Redirigiendo...', false);
     setTimeout(() => {
-      window.location.href = './empleados.html';
+      window.location.href = './login.html';
     }, 500);
   } catch (error) {
     showMessage(error.message, true);
@@ -41,7 +41,7 @@ async function login(event) {
 function bootstrap() {
   const token = localStorage.getItem(TOKEN_KEY);
   if (token) {
-    window.location.href = '/empleado/empleados.html';
+    window.location.href = './empleados.html';
     return;
   }
 
