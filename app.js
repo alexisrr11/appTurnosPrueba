@@ -36,6 +36,34 @@ function normalizeHour(hora) {
   return String(hora || '').slice(0, 5);
 }
 
+function normalizeDateISO(fecha) {
+  if (!fecha) return '';
+
+  if (fecha instanceof Date && !Number.isNaN(fecha.getTime())) {
+    const year = fecha.getFullYear();
+    const month = String(fecha.getMonth() + 1).padStart(2, '0');
+    const day = String(fecha.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+
+  const raw = String(fecha).trim();
+
+  const isoMatch = raw.match(/\d{4}-\d{2}-\d{2}/);
+  if (isoMatch) {
+    return isoMatch[0];
+  }
+
+  const parsed = new Date(raw);
+  if (!Number.isNaN(parsed.getTime())) {
+    const year = parsed.getFullYear();
+    const month = String(parsed.getMonth() + 1).padStart(2, '0');
+    const day = String(parsed.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+
+  return raw;
+}
+
 function getTodayInISO() {
   const now = new Date();
   const year = now.getFullYear();
@@ -213,7 +241,7 @@ app.get('/turnos/publico/ocupados', async (req, res) => {
     );
 
     const ocupados = result.rows.map((row) => ({
-      fecha: String(row.fecha).slice(0, 10),
+      fecha: normalizeDateISO(row.fecha),
       hora: normalizeHour(row.hora),
     }));
 
@@ -271,7 +299,13 @@ app.get('/turnos', authMiddleware, async (req, res) => {
     query += ' ORDER BY fecha ASC, hora ASC';
 
     const resultado = await pool.query(query, values);
-    return res.status(200).json(resultado.rows);
+    const turnos = resultado.rows.map((turno) => ({
+      ...turno,
+      fecha: normalizeDateISO(turno.fecha),
+      hora: normalizeHour(turno.hora),
+    }));
+
+    return res.status(200).json(turnos);
   } catch (error) {
     console.error(error);
     return res.status(500).json({ error: 'Error interno del servidor' });
