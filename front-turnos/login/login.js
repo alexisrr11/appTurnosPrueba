@@ -1,58 +1,54 @@
-export function darkMode () {
-    const html = document.documentElement;
-    const btnModoOscuro = document.getElementById('modoOscuroBtn');
+const API_BASE_URL = 'http://localhost:3000';
+const TOKEN_KEY = 'turnos_token';
 
-    btnModoOscuro.addEventListener('click', () => {
-        html.classList.toggle('dark');
-        setTimeout(() => {
-          btnModoOscuro.style.background = (btnModoOscuro.style.background === "bisque" ? "black" : "bisque");
-          btnModoOscuro.style.color = (btnModoOscuro.style.color === "black" ? "white" : "black");
-          btnModoOscuro.textContent = (btnModoOscuro.textContent === "☀️" ? "🌙" : "☀️");
-        }, 200);
-    });
+/**
+ * Muestra mensajes al usuario (éxito/error) en una sola zona de alertas.
+ */
+function showMessage(message, isError = true) {
+  const alert = document.getElementById('loginAlert');
+  if (!alert) return;
+
+  alert.textContent = message;
+  alert.classList.remove('hidden', 'bg-red-100', 'text-red-700', 'bg-green-100', 'text-green-700');
+  alert.classList.add(isError ? 'bg-red-100' : 'bg-green-100');
+  alert.classList.add(isError ? 'text-red-700' : 'text-green-700');
 }
-console.log(darkMode());
 
-document.addEventListener("DOMContentLoaded", () => {
-  const form = document.getElementById("loginForm");
-  const alerta = document.getElementById("loginAlert");
+/**
+ * Hace login contra /login y guarda el JWT.
+ */
+async function handleLogin(event) {
+  event.preventDefault();
 
-  form.addEventListener("submit", async (e) => {
-    e.preventDefault();
+  const email = document.getElementById('email')?.value?.trim();
+  const password = document.getElementById('password')?.value;
 
-    const email = document.getElementById("email").value;
-    const password = document.getElementById("password").value;
+  try {
+    const response = await fetch(`${API_BASE_URL}/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password })
+    });
 
-    try {
-      const res = await fetch("http://localhost:4000/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password })
-      });
+    const data = await response.json();
 
-      const data = await res.json();
-
-      if (res.ok) {
-        alerta.textContent = "Inicio de sesión exitoso";
-        alerta.classList.remove("hidden");
-        alerta.classList.remove("text-red-500");
-        alerta.classList.add("text-green-500");
-
-        // Redirigir a otra página o guardar usuario en localStorage
-        setTimeout(() => {
-          window.location.href = "../index.html"; // Cambiar por tu ruta real
-        }, 1500);
-      } else {
-        alerta.textContent = data.mensaje;
-        alerta.classList.remove("hidden");
-        alerta.classList.remove("text-green-500");
-        alerta.classList.add("text-red-500");
-      }
-    } catch (err) {
-      alerta.textContent = "Error de conexión con el servidor";
-      alerta.classList.remove("hidden");
-      alerta.classList.remove("text-green-500");
-      alerta.classList.add("text-red-500");
+    if (!response.ok) {
+      throw new Error(data.error || 'No se pudo iniciar sesión');
     }
-  });
+
+    // Guardamos el token para usarlo luego en endpoints protegidos.
+    localStorage.setItem(TOKEN_KEY, data.token);
+    showMessage('Login correcto. Redirigiendo...', false);
+
+    setTimeout(() => {
+      window.location.href = '../index.html';
+    }, 600);
+  } catch (error) {
+    showMessage(error.message || 'Error de conexión con el backend');
+  }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  const form = document.getElementById('loginForm');
+  form?.addEventListener('submit', handleLogin);
 });

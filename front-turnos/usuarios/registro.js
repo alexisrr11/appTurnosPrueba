@@ -1,61 +1,52 @@
-document.addEventListener("DOMContentLoaded", () => {
-  const registroForm = document.getElementById("registroForm");
-  const alerta = document.getElementById("registroAlert");
+const API_BASE_URL = 'http://localhost:3000';
 
-  registroForm.addEventListener("submit", async (e) => {
-    e.preventDefault();
+/**
+ * Renderiza alertas de éxito o error en el formulario de registro.
+ */
+function showMessage(message, isError = true) {
+  const alert = document.getElementById('registroAlert');
+  if (!alert) return;
 
-    const usuario = {
-      nombre: document.getElementById('nombre').value,
-      apellido: document.getElementById('apellido').value,
-      sexo: document.getElementById('sexo').value,
-      fechaNacimiento: document.getElementById('fechaNacimiento').value,
-      email: document.getElementById('email').value,
-      telefono: document.getElementById('telefono').value,
-      contraseña: document.getElementById('Contraseña').value
-    };
-
-    try {
-      const res = await fetch("http://localhost:4000/usuarios", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(usuario)
-      });
-
-      const data = await res.json();
-
-      if (res.ok) {
-        alerta.textContent = data.mensaje;
-        alerta.classList.remove("hidden");
-        alerta.classList.remove("text-red-500");
-        alerta.classList.add("text-green-500");
-        registroForm.reset();
-      } else {
-        alerta.textContent = data.mensaje || "Error en el registro";
-        alerta.classList.remove("hidden");
-        alerta.classList.remove("text-green-500");
-        alerta.classList.add("text-red-500");
-      }
-    } catch (error) {
-      alerta.textContent = "Error al conectar con el servidor";
-      alerta.classList.remove("hidden");
-      alerta.classList.remove("text-green-500");
-      alerta.classList.add("text-red-500");
-    }
-  });
-});
-
-function darkMode () {
-    const html = document.documentElement;
-    const btnModoOscuro = document.getElementById('modoOscuroBtn');
-
-    btnModoOscuro.addEventListener('click', () => {
-        html.classList.toggle('dark');
-        setTimeout(() => {
-          btnModoOscuro.style.background = (btnModoOscuro.style.background === "bisque" ? "black" : "bisque");
-          btnModoOscuro.style.color = (btnModoOscuro.style.color === "black" ? "white" : "black");
-          btnModoOscuro.textContent = (btnModoOscuro.textContent === "☀️" ? "🌙" : "☀️");
-        }, 200);
-    });
+  alert.textContent = message;
+  alert.classList.remove('hidden', 'bg-red-100', 'text-red-700', 'bg-green-100', 'text-green-700');
+  alert.classList.add(isError ? 'bg-red-100' : 'bg-green-100');
+  alert.classList.add(isError ? 'text-red-700' : 'text-green-700');
 }
-darkMode();
+
+/**
+ * Hace POST /registro usando nombre, email y password.
+ * Si el registro es exitoso, redirige a login.
+ */
+async function handleRegister(event) {
+  event.preventDefault();
+
+  const nombre = document.getElementById('nombre')?.value?.trim();
+  const email = document.getElementById('email')?.value?.trim();
+  const password = document.getElementById('password')?.value;
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/registro`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ nombre, email, password })
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || 'No se pudo completar el registro');
+    }
+
+    showMessage('Registro exitoso. Redirigiendo al login...', false);
+    setTimeout(() => {
+      window.location.href = '../login/login.html';
+    }, 700);
+  } catch (error) {
+    showMessage(error.message || 'Error al conectar con el backend');
+  }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  const form = document.getElementById('registroForm');
+  form?.addEventListener('submit', handleRegister);
+});
