@@ -127,7 +127,7 @@ function wireTableActions() {
 async function validateTokenOrRedirect() {
   const token = getToken();
   if (!token) {
-    window.location.href = '/empleado/login.html';
+    window.location.href = '/loginAdmins/loginAdmin.html';
     return false;
   }
 
@@ -137,7 +137,7 @@ async function validateTokenOrRedirect() {
 
   if (!response.ok) {
     localStorage.removeItem(TOKEN_KEY);
-    window.location.href = '/empleado/login.html';
+    window.location.href = '/loginAdmins/loginAdmin.html';
     return false;
   }
 
@@ -163,7 +163,7 @@ function bindEvents() {
 
   document.getElementById('logoutBtn').addEventListener('click', () => {
     localStorage.removeItem(TOKEN_KEY);
-    window.location.href = '/empleado/login.html';
+    window.location.href = '/loginAdmins/loginAdmin.html';
   });
 
   wireTableActions();
