@@ -3,16 +3,20 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Login empleado</title>
+  <title>Registro empleado</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <script defer src="login.js"></script>
+  <script defer src="registro.js"></script>
 </head>
 <body class="min-h-screen bg-slate-100 flex items-center justify-center p-4">
   <main class="bg-white rounded-xl shadow w-full max-w-md p-6">
-    <h1 class="text-2xl font-bold">Admin / Empleado</h1>
-    <p class="text-sm text-slate-500 mt-1">Iniciá sesión para gestionar turnos.</p>
+    <h1 class="text-2xl font-bold">Registro empleado</h1>
+    <p class="text-sm text-slate-500 mt-1">Creá tu cuenta para acceder al panel de turnos.</p>
 
-    <form id="loginForm" class="mt-5 space-y-4">
+    <form id="registroForm" class="mt-5 space-y-4">
+      <div>
+        <label for="nombre" class="text-sm font-medium">Nombre</label>
+        <input id="nombre" type="text" required class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2" />
+      </div>
       <div>
         <label for="email" class="text-sm font-medium">Email</label>
         <input id="email" type="email" required class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2" />
@@ -24,14 +28,8 @@
 
       <p id="mensaje" class="hidden text-sm rounded-lg px-3 py-2"></p>
 
-      <button class="w-full rounded-lg bg-blue-600 text-white px-4 py-2 hover:bg-blue-700">Entrar</button>
-
-      <p class="text-sm text-center text-slate-600">
-        ¿No tenés cuenta de empleado?
-        <a href="/empleado/registro.html" class="text-blue-600 font-semibold hover:underline">Registrate</a>
-      </p>
-
-      <a href="/" class="block text-center text-sm text-slate-600 hover:text-slate-800">Volver a cliente</a>
+      <button class="w-full rounded-lg bg-blue-600 text-white px-4 py-2 hover:bg-blue-700">Registrarme</button>
+      <a href="/empleado/login.html" class="block text-center text-sm text-slate-600 hover:text-slate-800">Volver al login</a>
     </form>
   </main>
 </body>
