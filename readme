@@ -1,0 +1,98 @@
+🎯 1️⃣ ¿Qué es turnos?
+
+Es un recurso REST.
+
+Por lo tanto tu base va a ser:
+
+/turnos
+
+🚀 2️⃣ Métodos y rutas que deberías tener
+✅ 1. Crear turno
+
+Método: POST
+Ruta: /turnos
+
+Se usa para:
+
+Registrar un nuevo turno
+
+Validar que no exista otro en la misma fecha y hora
+
+Validar datos obligatorios
+
+✅ 2. Obtener todos los turnos
+
+Método: GET
+Ruta: /turnos
+
+Sirve para:
+
+Listar todos los turnos
+
+ordenar por fecha y hora
+
+filtros por fecha
+
+Ejemplos futuros que podrías agregar:
+
+/turnos?fecha=2026-02-20
+/turnos?cliente=Juan
+
+✅ 3. Obtener un turno por ID
+
+Método: GET
+Ruta: /turnos/:id
+
+Validaciones:
+
+ID numérico
+
+Que exista el turno
+
+✅ 4. Actualizar un turno
+
+Método: PUT (reemplazo completo)
+o
+PATCH (actualización parcial)
+
+Ruta: /turnos/:id
+
+Sirve para:
+
+Cambiar fecha
+
+Cambiar hora
+
+Cambiar cliente
+
+Cambiar servicio
+
+⚠️ Importante:
+Si se cambia fecha u hora → se debe volver a validar el UNIQUE.
+
+✅ 5. Eliminar un turno
+
+Método: DELETE
+Ruta: /turnos/:id
+
+Sirve para:
+
+Cancelar turno
+
+🧠 3️⃣ Opcional (nivel más profesional)
+
+Si querés subir nivel después:
+
+🔎 Ver disponibilidad
+
+GET /turnos/disponibles?fecha=2026-02-20
+
+Para:
+
+Mostrar horarios libres
+
+Calcular horas posibles y eliminar las ocupadas
+
+📅 Ver turnos de un cliente
+
+GET /turnos?cliente=Alexis

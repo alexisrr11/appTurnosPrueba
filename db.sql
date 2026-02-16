@@ -1,0 +1,9 @@
+CREATE TABLE IF NOT EXISTS turnos (
+  id SERIAL PRIMARY KEY,
+  cliente VARCHAR(100) NOT NULL,
+  servicio VARCHAR(100) NOT NULL,
+  fecha DATE NOT NULL,
+  hora TIME NOT NULL,
+  creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE (fecha, hora)
+);
