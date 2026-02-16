@@ -4,73 +4,123 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Turnos - Frontend de Prueba</title>
-
+    <title>Frontend de prueba - Turnos</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.css" rel="stylesheet" />
     <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js"></script>
 </head>
 
 <body class="min-h-screen bg-slate-100 text-slate-800">
-    <main class="mx-auto max-w-6xl px-4 py-8">
-        <header class="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+    <main class="mx-auto max-w-7xl p-4 sm:p-6">
+        <header class="mb-6 rounded-xl bg-white p-4 shadow-sm ring-1 ring-slate-200 sm:flex sm:items-center sm:justify-between">
             <div>
-                <h1 class="text-2xl font-bold tracking-tight">Agenda de Turnos</h1>
-                <p class="text-sm text-slate-600">Frontend simple para probar el backend en <span
-                        class="font-medium">http://localhost:3000</span>.</p>
+                <h1 class="text-2xl font-bold">Frontend de prueba de turnos</h1>
+                <p class="text-sm text-slate-600">Backend objetivo: <span class="font-semibold">http://localhost:3000</span></p>
             </div>
-            <button id="btnNuevoTurno"
-                class="inline-flex items-center justify-center rounded-lg bg-blue-600 px-4 py-2 font-semibold text-white shadow-sm transition hover:bg-blue-700">
-                + Nuevo turno
-            </button>
+            <div id="sessionInfo" class="mt-3 hidden items-center gap-3 sm:mt-0">
+                <span id="userInfo" class="text-sm text-slate-600"></span>
+                <button id="logoutBtn" class="rounded-lg bg-slate-800 px-3 py-2 text-sm font-semibold text-white hover:bg-slate-900">Cerrar sesión</button>
+            </div>
         </header>
 
-        <section class="rounded-xl bg-white p-4 shadow-sm ring-1 ring-slate-200">
-            <div id="calendar"></div>
+        <div id="alertBox" class="mb-4 hidden rounded-lg border px-4 py-3 text-sm"></div>
+
+        <section id="registerView" class="mx-auto w-full max-w-md rounded-xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
+            <h2 class="mb-4 text-xl font-semibold">Registro</h2>
+            <form id="registerForm" class="space-y-4">
+                <div>
+                    <label for="regNombre" class="mb-1 block text-sm font-medium">Nombre</label>
+                    <input id="regNombre" type="text" required class="w-full rounded-lg border border-slate-300 px-3 py-2 focus:border-blue-500 focus:outline-none" />
+                </div>
+                <div>
+                    <label for="regEmail" class="mb-1 block text-sm font-medium">Email</label>
+                    <input id="regEmail" type="email" required class="w-full rounded-lg border border-slate-300 px-3 py-2 focus:border-blue-500 focus:outline-none" />
+                </div>
+                <div>
+                    <label for="regPassword" class="mb-1 block text-sm font-medium">Contraseña</label>
+                    <input id="regPassword" type="password" required class="w-full rounded-lg border border-slate-300 px-3 py-2 focus:border-blue-500 focus:outline-none" />
+                </div>
+                <button type="submit" class="w-full rounded-lg bg-blue-600 px-4 py-2 font-semibold text-white hover:bg-blue-700">Registrar</button>
+            </form>
+            <p class="mt-4 text-sm text-slate-600">¿Ya tenés cuenta?
+                <button id="goLoginFromRegister" class="font-semibold text-blue-600 hover:underline">Ir a Login</button>
+            </p>
+        </section>
+
+        <section id="loginView" class="mx-auto hidden w-full max-w-md rounded-xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
+            <h2 class="mb-4 text-xl font-semibold">Login</h2>
+            <form id="loginForm" class="space-y-4">
+                <div>
+                    <label for="loginEmail" class="mb-1 block text-sm font-medium">Email</label>
+                    <input id="loginEmail" type="email" required class="w-full rounded-lg border border-slate-300 px-3 py-2 focus:border-blue-500 focus:outline-none" />
+                </div>
+                <div>
+                    <label for="loginPassword" class="mb-1 block text-sm font-medium">Contraseña</label>
+                    <input id="loginPassword" type="password" required class="w-full rounded-lg border border-slate-300 px-3 py-2 focus:border-blue-500 focus:outline-none" />
+                </div>
+                <button type="submit" class="w-full rounded-lg bg-emerald-600 px-4 py-2 font-semibold text-white hover:bg-emerald-700">Iniciar sesión</button>
+            </form>
+            <p class="mt-4 text-sm text-slate-600">¿No tenés cuenta?
+                <button id="goRegisterFromLogin" class="font-semibold text-blue-600 hover:underline">Ir a Registro</button>
+            </p>
+        </section>
+
+        <section id="dashboardView" class="hidden space-y-4">
+            <div class="rounded-xl bg-white p-4 shadow-sm ring-1 ring-slate-200">
+                <div class="flex flex-wrap items-center justify-between gap-3">
+                    <h2 class="text-xl font-semibold">Dashboard de Turnos</h2>
+                    <div class="flex flex-wrap items-center gap-2">
+                        <button id="openCreateModal" class="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700">+ Crear turno</button>
+                    </div>
+                </div>
+                <p class="mt-2 text-sm text-slate-600">Tip: click en un evento para editarlo. Usa el botón rojo dentro del evento para eliminarlo.</p>
+            </div>
+
+            <div class="rounded-xl bg-white p-4 shadow-sm ring-1 ring-slate-200">
+                <div id="calendar"></div>
+            </div>
+
+            <div class="rounded-xl bg-white p-4 shadow-sm ring-1 ring-slate-200">
+                <h3 class="mb-3 text-lg font-semibold">Consultar disponibilidad</h3>
+                <form id="availabilityForm" class="flex flex-col gap-3 sm:flex-row sm:items-end">
+                    <div>
+                        <label for="availabilityDate" class="mb-1 block text-sm font-medium">Fecha</label>
+                        <input id="availabilityDate" type="date" required class="rounded-lg border border-slate-300 px-3 py-2 focus:border-blue-500 focus:outline-none" />
+                    </div>
+                    <button type="submit" class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700">Ver disponibles</button>
+                </form>
+                <ul id="availabilityResults" class="mt-3 list-disc space-y-1 pl-5 text-sm text-slate-700"></ul>
+            </div>
         </section>
     </main>
 
-    <div id="modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-900/50 px-4">
+    <div id="turnoModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-900/50 p-4">
         <div class="w-full max-w-lg rounded-xl bg-white p-6 shadow-xl">
             <div class="mb-4 flex items-start justify-between">
-                <h2 class="text-xl font-semibold">Crear turno</h2>
-                <button id="btnCerrarModal"
-                    class="rounded p-1 text-slate-500 hover:bg-slate-100 hover:text-slate-700">✕</button>
+                <h3 id="modalTitle" class="text-lg font-semibold">Crear turno</h3>
+                <button id="closeModal" class="rounded p-1 text-slate-500 hover:bg-slate-100 hover:text-slate-700">✕</button>
             </div>
-
-            <form id="formTurno" class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <form id="turnoForm" class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <input id="turnoId" type="hidden" />
                 <div class="sm:col-span-2">
                     <label for="cliente" class="mb-1 block text-sm font-medium">Cliente</label>
-                    <input id="cliente" name="cliente" type="text" required
-                        class="w-full rounded-lg border border-slate-300 px-3 py-2 outline-none ring-blue-500 focus:ring"
-                        placeholder="Ej: Juan Pérez" />
+                    <input id="cliente" type="text" required class="w-full rounded-lg border border-slate-300 px-3 py-2 focus:border-blue-500 focus:outline-none" />
                 </div>
-
                 <div class="sm:col-span-2">
                     <label for="servicio" class="mb-1 block text-sm font-medium">Servicio</label>
-                    <input id="servicio" name="servicio" type="text" required
-                        class="w-full rounded-lg border border-slate-300 px-3 py-2 outline-none ring-blue-500 focus:ring"
-                        placeholder="Ej: Corte de cabello" />
+                    <input id="servicio" type="text" required class="w-full rounded-lg border border-slate-300 px-3 py-2 focus:border-blue-500 focus:outline-none" />
                 </div>
-
                 <div>
                     <label for="fecha" class="mb-1 block text-sm font-medium">Fecha</label>
-                    <input id="fecha" name="fecha" type="date" required
-                        class="w-full rounded-lg border border-slate-300 px-3 py-2 outline-none ring-blue-500 focus:ring" />
+                    <input id="fecha" type="date" required class="w-full rounded-lg border border-slate-300 px-3 py-2 focus:border-blue-500 focus:outline-none" />
                 </div>
-
                 <div>
                     <label for="hora" class="mb-1 block text-sm font-medium">Hora</label>
-                    <input id="hora" name="hora" type="time" required
-                        class="w-full rounded-lg border border-slate-300 px-3 py-2 outline-none ring-blue-500 focus:ring" />
+                    <input id="hora" type="time" required class="w-full rounded-lg border border-slate-300 px-3 py-2 focus:border-blue-500 focus:outline-none" />
                 </div>
-
-                <div class="sm:col-span-2 mt-2 flex justify-end gap-2">
-                    <button type="button" id="btnCancelar"
-                        class="rounded-lg border border-slate-300 px-4 py-2 font-medium text-slate-700 hover:bg-slate-100">Cancelar</button>
-                    <button type="submit"
-                        class="rounded-lg bg-blue-600 px-4 py-2 font-semibold text-white hover:bg-blue-700">Guardar
-                        turno</button>
+                <div class="sm:col-span-2 flex justify-end gap-2">
+                    <button type="button" id="cancelModal" class="rounded-lg border border-slate-300 px-4 py-2 hover:bg-slate-100">Cancelar</button>
+                    <button type="submit" class="rounded-lg bg-blue-600 px-4 py-2 font-semibold text-white hover:bg-blue-700">Guardar</button>
                 </div>
             </form>
         </div>
@@ -78,17 +128,178 @@
 
     <script>
         const API_BASE = 'http://localhost:3000';
+        const STORAGE_TOKEN_KEY = 'jwt_token';
+        const STORAGE_EMAIL_KEY = 'user_email';
         let calendar;
 
+        const views = {
+            register: document.getElementById('registerView'),
+            login: document.getElementById('loginView'),
+            dashboard: document.getElementById('dashboardView')
+        };
+
         document.addEventListener('DOMContentLoaded', () => {
-            inicializarCalendario();
-            configurarModal();
-            cargarTurnos();
+            bindUIEvents();
+            initCalendar();
+            const token = getToken();
+            if (token) {
+                showView('dashboard');
+                refreshDashboard();
+            } else {
+                showView('login');
+            }
         });
 
-        function inicializarCalendario() {
-            const calendarEl = document.getElementById('calendar');
+        function bindUIEvents() {
+            document.getElementById('goLoginFromRegister').addEventListener('click', () => showView('login'));
+            document.getElementById('goRegisterFromLogin').addEventListener('click', () => showView('register'));
+            document.getElementById('registerForm').addEventListener('submit', handleRegister);
+            document.getElementById('loginForm').addEventListener('submit', handleLogin);
+            document.getElementById('logoutBtn').addEventListener('click', logout);
 
+            document.getElementById('openCreateModal').addEventListener('click', () => openTurnoModal());
+            document.getElementById('closeModal').addEventListener('click', closeTurnoModal);
+            document.getElementById('cancelModal').addEventListener('click', closeTurnoModal);
+            document.getElementById('turnoModal').addEventListener('click', (e) => {
+                if (e.target.id === 'turnoModal') closeTurnoModal();
+            });
+
+            document.getElementById('turnoForm').addEventListener('submit', saveTurno);
+            document.getElementById('availabilityForm').addEventListener('submit', loadAvailability);
+        }
+
+        function showView(viewName) {
+            Object.values(views).forEach((view) => view.classList.add('hidden'));
+            views[viewName].classList.remove('hidden');
+
+            const hasSession = Boolean(getToken());
+            const sessionInfo = document.getElementById('sessionInfo');
+            if (hasSession && viewName === 'dashboard') {
+                sessionInfo.classList.remove('hidden');
+                sessionInfo.classList.add('flex');
+                document.getElementById('userInfo').textContent = localStorage.getItem(STORAGE_EMAIL_KEY) || 'Usuario autenticado';
+            } else {
+                sessionInfo.classList.add('hidden');
+                sessionInfo.classList.remove('flex');
+            }
+            clearAlert();
+        }
+
+        function showAlert(message, type = 'error') {
+            const box = document.getElementById('alertBox');
+            box.textContent = message;
+            box.className = 'mb-4 rounded-lg border px-4 py-3 text-sm';
+            if (type === 'success') {
+                box.classList.add('border-emerald-300', 'bg-emerald-50', 'text-emerald-800');
+            } else {
+                box.classList.add('border-rose-300', 'bg-rose-50', 'text-rose-800');
+            }
+            box.classList.remove('hidden');
+        }
+
+        function clearAlert() {
+            const box = document.getElementById('alertBox');
+            box.classList.add('hidden');
+            box.textContent = '';
+        }
+
+        function getToken() {
+            return localStorage.getItem(STORAGE_TOKEN_KEY);
+        }
+
+        function setSession(token, email) {
+            localStorage.setItem(STORAGE_TOKEN_KEY, token);
+            if (email) localStorage.setItem(STORAGE_EMAIL_KEY, email);
+        }
+
+        function clearSession() {
+            localStorage.removeItem(STORAGE_TOKEN_KEY);
+            localStorage.removeItem(STORAGE_EMAIL_KEY);
+        }
+
+        async function apiRequest(path, { method = 'GET', body, auth = false } = {}) {
+            const headers = { 'Content-Type': 'application/json' };
+            if (auth) {
+                const token = getToken();
+                if (!token) throw new Error('No hay token. Iniciá sesión nuevamente.');
+                headers.Authorization = `Bearer ${token}`;
+            }
+
+            const response = await fetch(`${API_BASE}${path}`, {
+                method,
+                headers,
+                body: body ? JSON.stringify(body) : undefined
+            });
+
+            const contentType = response.headers.get('content-type') || '';
+            const data = contentType.includes('application/json') ? await response.json() : null;
+
+            if (!response.ok) {
+                const msg = data?.message || data?.error || `Error ${response.status}: ${response.statusText}`;
+                throw new Error(msg);
+            }
+
+            return data;
+        }
+
+        async function handleRegister(event) {
+            event.preventDefault();
+            clearAlert();
+            try {
+                await apiRequest('/registro', {
+                    method: 'POST',
+                    body: {
+                        nombre: document.getElementById('regNombre').value.trim(),
+                        email: document.getElementById('regEmail').value.trim(),
+                        contraseña: document.getElementById('regPassword').value,
+                        password: document.getElementById('regPassword').value
+                    }
+                });
+
+                event.target.reset();
+                showAlert('Registro exitoso. Ahora iniciá sesión.', 'success');
+                setTimeout(() => showView('login'), 700);
+            } catch (error) {
+                showAlert(`No se pudo registrar: ${error.message}`);
+            }
+        }
+
+        async function handleLogin(event) {
+            event.preventDefault();
+            clearAlert();
+            const email = document.getElementById('loginEmail').value.trim();
+            try {
+                const data = await apiRequest('/login', {
+                    method: 'POST',
+                    body: {
+                        email,
+                        contraseña: document.getElementById('loginPassword').value,
+                        password: document.getElementById('loginPassword').value
+                    }
+                });
+
+                const token = data?.token || data?.jwt || data?.accessToken;
+                if (!token) {
+                    throw new Error('El login respondió sin token JWT.');
+                }
+
+                setSession(token, email);
+                event.target.reset();
+                showView('dashboard');
+                await refreshDashboard();
+            } catch (error) {
+                showAlert(`No se pudo iniciar sesión: ${error.message}`);
+            }
+        }
+
+        function logout() {
+            clearSession();
+            if (calendar) calendar.removeAllEvents();
+            showView('login');
+        }
+
+        function initCalendar() {
+            const calendarEl = document.getElementById('calendar');
             calendar = new FullCalendar.Calendar(calendarEl, {
                 locale: 'es',
                 initialView: 'dayGridMonth',
@@ -97,124 +308,165 @@
                     center: 'title',
                     right: 'dayGridMonth,timeGridWeek,timeGridDay'
                 },
-                eventClick: async (info) => {
-                    const eventoId = info.event.id;
-                    const confirmar = confirm(`¿Eliminar el turno "${info.event.title}"?`);
+                eventClick: (info) => openTurnoModal(info.event),
+                eventContent: (arg) => {
+                    const wrapper = document.createElement('div');
+                    wrapper.className = 'flex items-center justify-between gap-2';
 
-                    if (!confirmar) return;
-                    await eliminarTurno(eventoId);
+                    const title = document.createElement('span');
+                    title.className = 'truncate';
+                    title.textContent = arg.event.title;
+
+                    const deleteBtn = document.createElement('button');
+                    deleteBtn.type = 'button';
+                    deleteBtn.textContent = '✕';
+                    deleteBtn.className = 'rounded bg-rose-600 px-1.5 py-0.5 text-xs font-bold text-white hover:bg-rose-700';
+                    deleteBtn.addEventListener('click', async (ev) => {
+                        ev.preventDefault();
+                        ev.stopPropagation();
+                        await deleteTurno(arg.event.id, arg.event.title);
+                    });
+
+                    wrapper.appendChild(title);
+                    wrapper.appendChild(deleteBtn);
+                    return { domNodes: [wrapper] };
                 }
             });
-
             calendar.render();
         }
 
-        function configurarModal() {
-            const modal = document.getElementById('modal');
-            const form = document.getElementById('formTurno');
-
-            document.getElementById('btnNuevoTurno').addEventListener('click', () => abrirModal());
-            document.getElementById('btnCerrarModal').addEventListener('click', () => cerrarModal());
-            document.getElementById('btnCancelar').addEventListener('click', () => cerrarModal());
-
-            modal.addEventListener('click', (e) => {
-                if (e.target === modal) cerrarModal();
-            });
-
-            form.addEventListener('submit', async (e) => {
-                e.preventDefault();
-                await crearTurno();
-            });
+        async function refreshDashboard() {
+            await loadTurnos();
+            const availabilityResults = document.getElementById('availabilityResults');
+            availabilityResults.innerHTML = '';
         }
 
-        function abrirModal() {
-            const modal = document.getElementById('modal');
+        function mapTurnoToEvent(turno) {
+            const fechaISO = new Date(turno.fecha).toISOString().split('T')[0];
+            const hora = String(turno.hora || '').slice(0, 5);
+            const start = `${fechaISO}T${hora}`;
+            return {
+                id: String(turno.id),
+                title: `${turno.cliente} - ${turno.servicio}`,
+                start,
+                extendedProps: {
+                    cliente: turno.cliente,
+                    servicio: turno.servicio,
+                    fecha: fechaISO,
+                    hora
+                }
+            };
+        }
+
+        async function loadTurnos() {
+            try {
+                const turnos = await apiRequest('/turnos', { auth: true });
+                const events = (Array.isArray(turnos) ? turnos : []).map(mapTurnoToEvent);
+                calendar.removeAllEvents();
+                calendar.addEventSource(events);
+            } catch (error) {
+                if (error.message.toLowerCase().includes('token')) {
+                    logout();
+                }
+                showAlert(`No se pudieron cargar turnos: ${error.message}`);
+            }
+        }
+
+        function openTurnoModal(eventData = null) {
+            const modal = document.getElementById('turnoModal');
+            const form = document.getElementById('turnoForm');
+            const modalTitle = document.getElementById('modalTitle');
+            form.reset();
+
+            if (eventData) {
+                modalTitle.textContent = 'Editar turno';
+                const props = eventData.extendedProps;
+                document.getElementById('turnoId').value = eventData.id;
+                document.getElementById('cliente').value = props.cliente || '';
+                document.getElementById('servicio').value = props.servicio || '';
+                document.getElementById('fecha').value = props.fecha || '';
+                document.getElementById('hora').value = props.hora || '';
+            } else {
+                modalTitle.textContent = 'Crear turno';
+                document.getElementById('turnoId').value = '';
+            }
+
             modal.classList.remove('hidden');
             modal.classList.add('flex');
         }
 
-        function cerrarModal() {
-            const modal = document.getElementById('modal');
-            const form = document.getElementById('formTurno');
-            form.reset();
+        function closeTurnoModal() {
+            const modal = document.getElementById('turnoModal');
             modal.classList.add('hidden');
             modal.classList.remove('flex');
         }
 
-        async function requestJSON(url, options = {}) {
-            const response = await fetch(url, {
-                headers: { 'Content-Type': 'application/json' },
-                ...options
-            });
+        async function saveTurno(event) {
+            event.preventDefault();
+            const id = document.getElementById('turnoId').value;
+            const payload = {
+                cliente: document.getElementById('cliente').value.trim(),
+                servicio: document.getElementById('servicio').value.trim(),
+                fecha: document.getElementById('fecha').value,
+                hora: document.getElementById('hora').value
+            };
 
-            const contentType = response.headers.get('content-type') || '';
-            const body = contentType.includes('application/json') ? await response.json() : null;
-
-            if (!response.ok) {
-                const mensaje = body?.message || body?.error || `Error ${response.status}: ${response.statusText}`;
-                throw new Error(mensaje);
-            }
-
-            return body;
-        }
-
-        function mapearTurnosAEventos(turnos) {
-            return turnos.map((turno) => {
-                const fecha = new Date(turno.fecha).toISOString().split("T")[0];
-                const hora = turno.hora.slice(0, 5); // HH:MM
-
-                return {
-                    id: String(turno.id),
-                    title: turno.cliente, // solo nombre (más limpio en month view)
-                    start: `${fecha}T${hora}`,
-                    allDay: false
-                };
-            });
-        }
-
-
-        async function cargarTurnos() {
             try {
-                const turnos = await requestJSON(`${API_BASE}/turnos`);
-                const eventos = mapearTurnosAEventos(Array.isArray(turnos) ? turnos : []);
-
-                calendar.removeAllEvents();
-                calendar.addEventSource(eventos);
+                if (id) {
+                    await apiRequest(`/turnos/${id}`, { method: 'PUT', auth: true, body: payload });
+                    showAlert('Turno actualizado correctamente.', 'success');
+                } else {
+                    await apiRequest('/turnos', { method: 'POST', auth: true, body: payload });
+                    showAlert('Turno creado correctamente.', 'success');
+                }
+                closeTurnoModal();
+                await loadTurnos();
             } catch (error) {
-                alert(`No se pudieron cargar los turnos.\n${error.message}`);
+                showAlert(`No se pudo guardar el turno: ${error.message}`);
             }
         }
 
-        async function crearTurno() {
+        async function deleteTurno(id, title) {
+            const ok = confirm(`¿Eliminar turno "${title}"?`);
+            if (!ok) return;
             try {
-                const payload = {
-                    cliente: document.getElementById('cliente').value.trim(),
-                    servicio: document.getElementById('servicio').value.trim(),
-                    fecha: document.getElementById('fecha').value,
-                    hora: document.getElementById('hora').value
-                };
+                await apiRequest(`/turnos/${id}`, { method: 'DELETE', auth: true });
+                showAlert('Turno eliminado.', 'success');
+                await loadTurnos();
+            } catch (error) {
+                showAlert(`No se pudo eliminar el turno: ${error.message}`);
+            }
+        }
 
-                await requestJSON(`${API_BASE}/turnos`, {
-                    method: 'POST',
-                    body: JSON.stringify(payload)
+        async function loadAvailability(event) {
+            event.preventDefault();
+            const date = document.getElementById('availabilityDate').value;
+            const results = document.getElementById('availabilityResults');
+            results.innerHTML = '';
+
+            if (!date) {
+                showAlert('Seleccioná una fecha para consultar disponibilidad.');
+                return;
+            }
+
+            try {
+                const data = await apiRequest(`/turnos/disponibles?fecha=${encodeURIComponent(date)}`, { auth: true });
+                const slots = Array.isArray(data) ? data : (Array.isArray(data?.disponibles) ? data.disponibles : []);
+
+                if (!slots.length) {
+                    const li = document.createElement('li');
+                    li.textContent = 'Sin horarios disponibles para esa fecha.';
+                    results.appendChild(li);
+                    return;
+                }
+
+                slots.forEach((slot) => {
+                    const li = document.createElement('li');
+                    li.textContent = typeof slot === 'string' ? slot : JSON.stringify(slot);
+                    results.appendChild(li);
                 });
-
-                cerrarModal();
-                await cargarTurnos();
             } catch (error) {
-                alert(`No se pudo crear el turno.\n${error.message}`);
-            }
-        }
-
-        async function eliminarTurno(id) {
-            try {
-                await requestJSON(`${API_BASE}/turnos/${id}`, {
-                    method: 'DELETE'
-                });
-
-                await cargarTurnos();
-            } catch (error) {
-                alert(`No se pudo eliminar el turno.\n${error.message}`);
+                showAlert(`No se pudo consultar disponibilidad: ${error.message}`);
             }
         }
     </script>
