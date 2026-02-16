@@ -1,3 +1,163 @@
+El proceso correcto es:
+
+Paso 1 — Validación básica
+
+Verificar que nombre, email y password existan
+
+Validar formato email
+
+Validar longitud mínima password
+
+Paso 2 — Verificar duplicado
+
+Buscar en DB si ya existe ese email
+
+Si existe → devolver error
+
+Paso 3 — Hashear contraseña
+
+Nunca guardar password plano
+
+Usar bcrypt
+
+Generar hash seguro
+
+Paso 4 — Guardar usuario
+
+Insertar en tabla usuarios
+
+Guardar hash
+
+Paso 5 — Respuesta
+
+Devolver datos públicos (id, nombre, email)
+
+Nunca devolver password
+
+Eso es registro seguro.
+
+🔐 4️⃣ Flujo completo de LOGIN (conceptual)
+
+Cuando el cliente hace:
+
+POST /login
+
+
+El proceso correcto:
+
+Paso 1 — Validación básica
+
+Email y password obligatorios
+
+Paso 2 — Buscar usuario
+
+Buscar por email
+
+Si no existe → error genérico (no revelar cuál campo falló)
+
+Paso 3 — Comparar contraseña
+
+Usar bcrypt.compare
+
+Comparar password enviada con hash guardado
+
+Paso 4 — Si coincide
+
+Tenés dos opciones:
+
+Opción básica (sin JWT por ahora)
+
+Devolver mensaje "Login exitoso"
+
+Devolver datos usuario
+
+No hay sesión real
+
+Opción profesional (recomendada)
+
+Generar JWT
+
+Enviar token al frontend
+
+Frontend lo guarda
+
+Se manda en headers Authorization
+
+Eso permite proteger rutas.
+
+🔒 5️⃣ Cómo proteger turnos
+
+Una vez que tengas login, el flujo correcto sería:
+
+Usuario hace login
+
+Recibe token
+
+Cada request a:
+
+POST /turnos
+
+GET /turnos
+
+DELETE /turnos
+
+PUT /turnos
+
+debe enviar el token
+
+El backend:
+
+Verifica token
+
+Extrae usuario_id
+
+Solo muestra turnos de ese usuario
+
+Eso convierte tu app en sistema multiusuario real.
+
+🧠 6️⃣ Flujo interno de request protegido
+
+Cuando llega una request protegida:
+
+1️⃣ Leer header Authorization
+2️⃣ Verificar JWT
+3️⃣ Extraer user id
+4️⃣ Adjuntarlo al request
+5️⃣ Continuar hacia el controlador
+
+Eso se hace con middleware.
+
+🚀 7️⃣ Qué vas a "desestructurar" después
+
+Ahora estás sin arquitectura.
+
+Cuando refactorices vas a separar:
+
+routes/
+
+controllers/
+
+middlewares/
+
+services/
+
+database/
+
+utils/
+
+Eso es arquitectura limpia.
+
+Pero primero está perfecto hacerlo todo en un solo archivo para entender el flujo completo.
+
+🎯 Orden recomendado para que no te rompas nada
+
+1️⃣ Crear tabla usuarios
+2️⃣ Probar registro
+3️⃣ Probar login
+4️⃣ Agregar usuario_id a turnos
+5️⃣ Proteger rutas
+6️⃣ Refactorizar
+
 🎯 1️⃣ ¿Qué es turnos?
 
 Es un recurso REST.

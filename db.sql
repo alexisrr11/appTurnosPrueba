@@ -7,3 +7,12 @@ CREATE TABLE IF NOT EXISTS turnos (
   creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   UNIQUE (fecha, hora)
 );
+
+CREATE TABLE usuarios (
+    id SERIAL PRIMARY KEY,
+    nombre VARCHAR(100) NOT NULL,
+    email VARCHAR(150) NOT NULL UNIQUE,
+    password VARCHAR(255) NOT NULL,
+    creado_en TIMESTAMP DEFAULT NOW(),
+    actualizado_en TIMESTAMP DEFAULT NOW()
+);

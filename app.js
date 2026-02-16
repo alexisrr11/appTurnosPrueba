@@ -1,6 +1,7 @@
 import express from 'express';
 import dotenv from "dotenv";
 import pool from './db.js';
+import cors from 'cors';
 dotenv.config();
 
 //Variables necesarias
@@ -9,6 +10,7 @@ const PORT = Number(process.env.PORT) || 3000;
 
 //middlewares
 app.use(express.json());
+app.use(cors());
 
 //Metodos
 app.get("/", (req, res) => {
