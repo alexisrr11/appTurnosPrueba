@@ -106,7 +106,7 @@ function initCalendar() {
     },
     eventClick: (info) => {
       const event = info.event;
-      alert(`Turno: ${event.title}\nFecha: ${event.start.toISOString().slice(0,10)}\nHora: ${event.start.toISOString().slice(11,16)}`);
+      alert(`Turno: ${event.title}\nFecha: ${event.start.toISOString().slice(0, 10)}\nHora: ${event.start.toISOString().slice(11, 16)}`);
     }
   });
 
@@ -136,7 +136,7 @@ async function handleCreateTurno(event) {
   const hora = horaRaw && horaRaw.length === 5 ? `${horaRaw}:00` : horaRaw;
 
   try {
-    await apiFetch('/turnos', {
+    await apiFetch('/turnos/publico', {
       method: 'POST',
       body: JSON.stringify({ cliente, servicio, fecha, hora })
     }, true);
@@ -160,14 +160,44 @@ function setupUiEvents() {
   document.getElementById('formTurno')?.addEventListener('submit', handleCreateTurno);
 
   document.getElementById('btnLogout')?.addEventListener('click', () => {
+    const confirmar = confirm("¿Seguro que querés cerrar sesión?");
+    if (!confirmar) return;
+
     localStorage.removeItem(TOKEN_KEY);
     window.location.href = 'login/login.html';
   });
+
+}
+
+function generarOpcionesHora() {
+  const selectHora = document.getElementById("hora");
+  if (!selectHora) return;
+
+  selectHora.innerHTML = "";
+
+  const horaInicio = 9;   // 09:00
+  const horaFin = 18;     // 18:00
+  const intervalo = 60;   // minutos
+
+  for (let h = horaInicio; h < horaFin; h++) {
+    for (let m = 0; m < 60; m += intervalo) {
+
+      const hora = String(h).padStart(2, "0");
+      const minuto = String(m).padStart(2, "0");
+
+      const option = document.createElement("option");
+      option.value = `${hora}:${minuto}`;
+      option.textContent = `${hora}:${minuto}`;
+
+      selectHora.appendChild(option);
+    }
+  }
 }
 
 async function bootstrap() {
   setupUiEvents();
   initCalendar();
+  generarOpcionesHora();
 
   const token = getToken();
   if (!token) {
