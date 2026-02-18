@@ -1,66 +1,120 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Panel de empleados</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.css" rel="stylesheet" />
-  <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js"></script>
-  <script defer src="empleados.js"></script>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Panel de empleados</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.css" rel="stylesheet" />
+    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js"></script>
+    <script defer src="empleados.js"></script>
 </head>
+
 <body class="min-h-screen bg-slate-100 text-slate-900">
-  <header class="bg-white border-b border-slate-200">
-    <div class="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between gap-4">
-      <div>
-        <h1 class="text-2xl font-bold">Panel Admin / Empleado</h1>
-        <p class="text-sm text-slate-500">Vista completa de turnos con filtros y cancelación.</p>
-      </div>
-      <button id="logoutBtn" class="rounded-lg bg-slate-900 text-white px-4 py-2 text-sm hover:bg-slate-700">Cerrar sesión</button>
-    </div>
-  </header>
-
-  <main class="max-w-7xl mx-auto px-4 py-6 space-y-6">
-    <p id="mensaje" class="hidden text-sm rounded-lg px-3 py-2"></p>
-
-    <section class="bg-white rounded-xl shadow p-4">
-      <h2 class="text-lg font-semibold mb-3">Filtros</h2>
-      <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <div>
-          <label for="filtroFecha" class="text-sm font-medium">Fecha exacta</label>
-          <input id="filtroFecha" type="date" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2" />
+    <header class="bg-white border-b border-slate-200">
+        <div class="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between gap-4">
+            <div>
+                <h1 class="text-2xl font-bold">Panel Admin / Empleado</h1>
+                <p class="text-sm text-slate-500">Vista completa de turnos con filtros y cancelación.</p>
+            </div>
+            <button id="logoutBtn" class="rounded-lg bg-slate-900 text-white p-2 text-sm hover:bg-slate-700">Cerrar
+                sesión</button>
         </div>
-        <div class="flex items-end">
-          <button id="aplicarFiltros" class="w-full rounded-lg bg-blue-600 text-white px-4 py-2 hover:bg-blue-700">Aplicar filtro</button>
-        </div>
-        <div class="flex items-end">
-          <button id="limpiarFiltros" class="w-full rounded-lg border border-slate-300 px-4 py-2 hover:bg-slate-50">Limpiar</button>
-        </div>
-      </div>
-    </section>
+    </header>
 
-    <section class="bg-white rounded-xl shadow p-4">
-      <h2 class="text-lg font-semibold mb-3">Calendario de todos los turnos</h2>
-      <div id="calendar"></div>
-    </section>
+    <main class="max-w-7xl mx-auto px-4 py-2 space-y-6">
+        <p id="mensaje" class="hidden text-sm rounded-lg px-3 py-2"></p>
 
-    <section class="bg-white rounded-xl shadow p-4">
-      <h2 class="text-lg font-semibold mb-3">Lista de turnos</h2>
-      <div class="overflow-x-auto">
-        <table class="w-full text-sm">
-          <thead>
-            <tr class="border-b border-slate-200 text-left">
-              <th class="py-2">Cliente</th>
-              <th class="py-2">Servicio</th>
-              <th class="py-2">Fecha</th>
-              <th class="py-2">Hora</th>
-              <th class="py-2">Acciones</th>
-            </tr>
-          </thead>
-          <tbody id="tablaTurnos"></tbody>
-        </table>
-      </div>
-    </section>
-  </main>
+        <section class="bg-white rounded-xl shadow p-4">
+            <h2 class="text-lg font-semibold">Buscar Cliente <button id="btn-buscar-cliente">➕</button></h2>
+            <div id="contenedor-buscar-cliente" class="hidden grid grid-cols-1 pt-3 sm:grid-cols-4 gap-3">
+                <div>
+                    <label for="filtroNombre" class="text-sm font-medium">Nombre del cliente</label>
+                    <input id="filtroNombre" type="text" placeholder="Ej: Juan"
+                        class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2" />
+                </div>
+
+                <div>
+                    <label for="filtroFecha" class="text-sm font-medium">Fecha exacta</label>
+                    <input id="filtroFecha" type="date"
+                        class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2" />
+                </div>
+
+                <div class="flex items-end">
+                    <button id="aplicarFiltros"
+                        class="w-full rounded-lg bg-blue-900 text-white px-4 py-2 hover:bg-blue-800">
+                        Buscar
+                    </button>
+                </div>
+
+                <div class="flex items-end">
+                    <button id="limpiarFiltros"
+                        class="w-full rounded-lg border border-slate-300 px-4 py-2 hover:bg-slate-50">
+                        Limpiar
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <section class="bg-white rounded-xl shadow p-4">
+            <h2 class="text-lg font-semibold">Configuración de horarios <button id="btn-configuraciones">➕</button></h2>
+
+            <div id="configuraciones" class="hidden mt-3">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+
+                    <div>
+                        <label class="text-sm font-medium">Hora apertura</label>
+                        <input type="time" id="horaApertura" class="mt-1 w-full rounded-lg border px-3 py-2"
+                            value="09:00">
+                    </div>
+
+                    <div>
+                        <label class="text-sm font-medium">Hora cierre</label>
+                        <input type="time" id="horaCierre" class="mt-1 w-full rounded-lg border px-3 py-2"
+                            value="18:00">
+                    </div>
+
+                    <div>
+                        <label class="text-sm font-medium">Duración turno (min)</label>
+                        <input type="number" id="duracionTurno" class="mt-1 w-full rounded-lg border px-3 py-2"
+                            value="60">
+                    </div>
+
+                </div>
+                <h2 class="text-lg font-semibold m-4">Bloquear día manualmente</h2>
+
+                <div class="flex gap-3">
+                    <input type="date" id="fechaBloqueo" class="border rounded px-3 py-2">
+                    <button id="bloquearDia" class="bg-red-400 text-white px-4 py-2 rounded">
+                        Día Cerrado
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <section class="bg-white rounded-xl shadow p-4">
+            <h2 class="text-lg font-semibold mb-3">Próximos turnos</h2>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                    <h3 class="font-medium text-slate-700 mb-2">Hoy</h3>
+                    <ul id="turnosHoy" class="space-y-2"></ul>
+                </div>
+
+                <div>
+                    <h3 class="font-medium text-slate-700 mb-2">Mañana</h3>
+                    <ul id="turnosManana" class="space-y-2"></ul>
+                </div>
+            </div>
+
+        </section>
+
+        <section class="bg-white rounded-xl shadow p-4">
+            <h2 class="text-lg font-semibold mb-3">Calendario de todos los turnos</h2>
+            <div id="calendar"></div>
+        </section>
+    </main>
 </body>
+
 </html>

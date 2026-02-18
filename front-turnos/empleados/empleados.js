@@ -1,8 +1,28 @@
 const API_BASE_URL = 'http://localhost:3000';
 const TOKEN_KEY = 'turnos_token';
-
 let calendar;
 let cacheTurnos = [];
+
+const btnConfiguraciones = document.getElementById("btn-configuraciones");
+const configuraciones = document.getElementById("configuraciones");
+const contenedorBuscarCliente = document.getElementById("contenedor-buscar-cliente");
+const btnBuscarCliente = document.getElementById("btn-buscar-cliente");
+
+const listaHoy = document.getElementById("turnosHoy");
+const listaManana = document.getElementById("turnosManana");
+
+const inputNombre = document.getElementById("filtroNombre");
+const inputFecha = document.getElementById("filtroFecha");
+
+function abrirContenedores(btn, contenedor) {
+  btn.addEventListener("click", () => {
+    contenedor.classList.toggle("hidden");
+    btn.textContent = contenedor.classList.contains("hidden") ? "➕" : "➖";
+  });
+}
+
+abrirContenedores(btnConfiguraciones, configuraciones);
+abrirContenedores(btnBuscarCliente, contenedorBuscarCliente);
 
 function getToken() {
   return localStorage.getItem(TOKEN_KEY);
@@ -19,8 +39,7 @@ function showMessage(message, isError = true) {
   const box = document.getElementById('mensaje');
   box.textContent = message;
   box.classList.remove('hidden', 'bg-red-100', 'text-red-700', 'bg-green-100', 'text-green-700');
-  box.classList.add(isError ? 'bg-red-100' : 'bg-green-100');
-  box.classList.add(isError ? 'text-red-700' : 'text-green-700');
+  box.classList.add(isError ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700');
 }
 
 function normalizeTurnoDate(turno) {
@@ -35,60 +54,101 @@ function turnosToEvents(turnos) {
   }));
 }
 
-function renderTable(turnos) {
-  const tbody = document.getElementById('tablaTurnos');
-  tbody.innerHTML = '';
+/* ============================= */
+/* NUEVO RENDER DE LISTAS */
+/* ============================= */
 
+function renderListas(turnos) {
+  listaHoy.innerHTML = '';
+  listaManana.innerHTML = '';
+
+  const hoy = new Date();
+  const manana = new Date();
+  manana.setDate(hoy.getDate() + 1);
+
+  const hoyStr = hoy.toISOString().slice(0, 10);
+  const mananaStr = manana.toISOString().slice(0, 10);
+
+  const turnosHoy = turnos.filter(t => normalizeTurnoDate(t) === hoyStr);
+  const turnosManana = turnos.filter(t => normalizeTurnoDate(t) === mananaStr);
+
+  renderItems(turnosHoy, listaHoy);
+  renderItems(turnosManana, listaManana);
+}
+
+function renderItems(turnos, contenedor) {
   if (turnos.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="5" class="py-4 text-slate-500">No hay turnos para mostrar.</td></tr>';
+    contenedor.innerHTML = `<li class="text-slate-400">Sin turnos</li>`;
     return;
   }
 
-  turnos.forEach((turno) => {
-    const row = document.createElement('tr');
-    row.className = 'border-b border-slate-100';
-    row.innerHTML = `
-      <td class="py-2">${turno.cliente}</td>
-      <td class="py-2">${turno.servicio}</td>
-      <td class="py-2">${normalizeTurnoDate(turno)}</td>
-      <td class="py-2">${String(turno.hora).slice(0, 5)}</td>
-      <td class="py-2">
-        <button data-id="${turno.id}" class="cancelarTurno rounded bg-red-600 text-white px-3 py-1 hover:bg-red-700">
-          Cancelar
-        </button>
-      </td>
+  turnos.forEach(turno => {
+    const li = document.createElement("li");
+    li.className = "bg-slate-50 p-3 rounded-lg flex justify-between items-center";
+
+    li.innerHTML = `
+      <div>
+        <p class="font-medium">${turno.cliente}</p>
+        <p class="text-sm text-slate-500">
+          ${turno.servicio} - ${String(turno.hora).slice(0, 5)}
+        </p>
+      </div>
+      <button data-id="${turno.id}" 
+        class="cancelarTurno bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600">
+        Cancelar
+      </button>
     `;
-    tbody.appendChild(row);
+
+    contenedor.appendChild(li);
   });
 }
 
-function renderCalendar(turnos) {
-  calendar.removeAllEvents();
-  calendar.addEventSource(turnosToEvents(turnos));
+/* ============================= */
+/* FILTROS */
+/* ============================= */
+
+function aplicarFiltrosLocales() {
+  let filtrados = [...cacheTurnos];
+
+  const nombre = inputNombre.value.toLowerCase().trim();
+  const fecha = inputFecha.value;
+
+  if (nombre) {
+    filtrados = filtrados.filter(t =>
+      t.cliente.toLowerCase().includes(nombre)
+    );
+  }
+
+  if (fecha) {
+    filtrados = filtrados.filter(t =>
+      normalizeTurnoDate(t) === fecha
+    );
+  }
+
+  renderListas(filtrados);
+  renderCalendar(filtrados);
 }
 
-async function fetchTurnos(query = '') {
-  const response = await fetch(`${API_BASE_URL}/turnos${query}`, {
+/* ============================= */
+/* API */
+/* ============================= */
+
+async function fetchTurnos() {
+  const response = await fetch(`${API_BASE_URL}/turnos`, {
     method: 'GET',
     headers: authHeaders(),
   });
 
   const data = await response.json().catch(() => ({}));
-
-  if (!response.ok) {
-    throw new Error(data.error || 'No se pudieron cargar turnos');
-  }
-
+  if (!response.ok) throw new Error(data.error || 'Error al cargar turnos');
   return data;
 }
 
 async function loadTurnos() {
-  const fecha = document.getElementById('filtroFecha').value;
-  const query = fecha ? `?fecha=${fecha}` : '';
-  const turnos = await fetchTurnos(query);
+  const turnos = await fetchTurnos();
   cacheTurnos = turnos;
+  renderListas(turnos);
   renderCalendar(turnos);
-  renderTable(turnos);
 }
 
 async function cancelarTurno(id) {
@@ -98,50 +158,63 @@ async function cancelarTurno(id) {
   });
 
   const data = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    throw new Error(data.error || 'No se pudo cancelar el turno');
-  }
-
+  if (!response.ok) throw new Error(data.error || 'No se pudo cancelar');
   return data;
 }
 
-function wireTableActions() {
-  document.getElementById('tablaTurnos').addEventListener('click', async (event) => {
-    const button = event.target.closest('.cancelarTurno');
-    if (!button) return;
+/* ============================= */
+/* EVENTOS */
+/* ============================= */
 
-    const id = button.getAttribute('data-id');
-    const confirmed = window.confirm('¿Seguro que querés cancelar este turno?');
-    if (!confirmed) return;
+function bindEvents() {
+  document.getElementById('aplicarFiltros').addEventListener('click', aplicarFiltrosLocales);
+
+  document.getElementById('limpiarFiltros').addEventListener('click', () => {
+    inputNombre.value = '';
+    inputFecha.value = '';
+    renderListas(cacheTurnos);
+    renderCalendar(cacheTurnos);
+  });
+
+  inputNombre.addEventListener('input', aplicarFiltrosLocales);
+
+  document.body.addEventListener('click', async (e) => {
+    const btn = e.target.closest('.cancelarTurno');
+    if (!btn) return;
+
+    const id = btn.dataset.id;
+    if (!confirm("¿Cancelar turno?")) return;
 
     try {
       await cancelarTurno(id);
-      showMessage('Turno cancelado correctamente.', false);
+      showMessage("Turno cancelado correctamente", false);
       await loadTurnos();
-    } catch (error) {
-      showMessage(error.message, true);
+    } catch (err) {
+      showMessage(err.message, true);
     }
   });
-}
 
-async function validateTokenOrRedirect() {
-  const token = getToken();
-  if (!token) {
-    window.location.href = '/loginAdmins/loginAdmin.html';
-    return false;
-  }
+  document.getElementById('logoutBtn').addEventListener('click', () => {
+    const confirmar = confirm("¿Seguro que querés cerrar sesión?");
 
-  const response = await fetch(`${API_BASE_URL}/me`, {
-    headers: authHeaders(),
+    if (!confirmar) return;
+
+    localStorage.removeItem(TOKEN_KEY);
+
+    setTimeout(() => {
+      window.location.href = './login.html';
+    }, 500);
   });
 
-  if (!response.ok) {
-    localStorage.removeItem(TOKEN_KEY);
-    window.location.href = '../loginAdmin/loginAdmin.html';
-    return false;
-  }
+}
 
-  return true;
+/* ============================= */
+/* CALENDARIO */
+/* ============================= */
+
+function renderCalendar(turnos) {
+  calendar.removeAllEvents();
+  calendar.addEventSource(turnosToEvents(turnos));
 }
 
 function initCalendar() {
@@ -150,36 +223,38 @@ function initCalendar() {
     locale: 'es',
     height: 600,
     eventTimeFormat: { hour: '2-digit', minute: '2-digit', hour12: false },
+
+    eventClick: async function (info) {
+      const id = info.event.id;
+
+      const confirmado = confirm(
+        `¿Querés cancelar este turno?\n\n${info.event.title}`
+      );
+
+      if (!confirmado) return;
+
+      try {
+        await cancelarTurno(id);
+        showMessage("Turno cancelado correctamente", false);
+        await loadTurnos();
+      } catch (error) {
+        showMessage(error.message, true);
+      }
+    }
   });
+
   calendar.render();
 }
 
-function bindEvents() {
-  document.getElementById('aplicarFiltros').addEventListener('click', loadTurnos);
-  document.getElementById('limpiarFiltros').addEventListener('click', async () => {
-    document.getElementById('filtroFecha').value = '';
-    await loadTurnos();
-  });
 
-  document.getElementById('logoutBtn').addEventListener('click', () => {
-    localStorage.removeItem(TOKEN_KEY);
-    window.location.href = './login.html';
-  });
-
-  wireTableActions();
-}
+/* ============================= */
+/* INIT */
+/* ============================= */
 
 async function bootstrap() {
-  try {
-    const authorized = await validateTokenOrRedirect();
-    if (!authorized) return;
-
-    initCalendar();
-    bindEvents();
-    await loadTurnos();
-  } catch (error) {
-    showMessage(error.message, true);
-  }
+  initCalendar();
+  bindEvents();
+  await loadTurnos();
 }
 
 document.addEventListener('DOMContentLoaded', bootstrap);
