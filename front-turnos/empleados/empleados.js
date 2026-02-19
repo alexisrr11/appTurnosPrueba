@@ -2,22 +2,23 @@ const API_BASE_URL = 'http://localhost:3000';
 const TOKEN_KEY = 'turnos_token';
 let calendar;
 let cacheTurnos = [];
+let cacheBloqueos = [];
 
-const btnConfiguraciones = document.getElementById("btn-configuraciones");
-const configuraciones = document.getElementById("configuraciones");
-const contenedorBuscarCliente = document.getElementById("contenedor-buscar-cliente");
-const btnBuscarCliente = document.getElementById("btn-buscar-cliente");
+const btnConfiguraciones = document.getElementById('btn-configuraciones');
+const configuraciones = document.getElementById('configuraciones');
+const contenedorBuscarCliente = document.getElementById('contenedor-buscar-cliente');
+const btnBuscarCliente = document.getElementById('btn-buscar-cliente');
 
-const listaHoy = document.getElementById("turnosHoy");
-const listaManana = document.getElementById("turnosManana");
+const listaHoy = document.getElementById('turnosHoy');
+const listaManana = document.getElementById('turnosManana');
 
-const inputNombre = document.getElementById("filtroNombre");
-const inputFecha = document.getElementById("filtroFecha");
+const inputNombre = document.getElementById('filtroNombre');
+const inputFecha = document.getElementById('filtroFecha');
 
 function abrirContenedores(btn, contenedor) {
-  btn.addEventListener("click", () => {
-    contenedor.classList.toggle("hidden");
-    btn.textContent = contenedor.classList.contains("hidden") ? "➕" : "➖";
+  btn.addEventListener('click', () => {
+    contenedor.classList.toggle('hidden');
+    btn.textContent = contenedor.classList.contains('hidden') ? '➕' : '➖';
   });
 }
 
@@ -49,14 +50,33 @@ function normalizeTurnoDate(turno) {
 function turnosToEvents(turnos) {
   return turnos.map((turno) => ({
     id: String(turno.id),
-    title: `${turno.cliente} - ${turno.servicio}`,
+    title: `${turno.cliente} ${turno.apellido} - ${turno.servicio}`,
     start: `${normalizeTurnoDate(turno)}T${String(turno.hora).slice(0, 8)}`,
+    backgroundColor: turno.estado === 'cancelado' ? '#9ca3af' : '#2563eb',
+    borderColor: turno.estado === 'cancelado' ? '#6b7280' : '#1d4ed8',
+    extendedProps: { estado: turno.estado },
   }));
 }
 
-/* ============================= */
-/* NUEVO RENDER DE LISTAS */
-/* ============================= */
+function buildBackgroundEvents(feriados, bloqueos) {
+  const feriadosBg = feriados.map((h) => ({
+    display: 'background',
+    start: h.date,
+    allDay: true,
+    backgroundColor: '#fee2e2',
+    title: 'Feriado',
+  }));
+
+  const bloqueosBg = bloqueos.filter((b) => b.activo).map((b) => ({
+    display: 'background',
+    start: b.fecha,
+    allDay: true,
+    backgroundColor: '#e5e7eb',
+    title: 'Día bloqueado',
+  }));
+
+  return [...feriadosBg, ...bloqueosBg];
+}
 
 function renderListas(turnos) {
   listaHoy.innerHTML = '';
@@ -69,8 +89,8 @@ function renderListas(turnos) {
   const hoyStr = hoy.toISOString().slice(0, 10);
   const mananaStr = manana.toISOString().slice(0, 10);
 
-  const turnosHoy = turnos.filter(t => normalizeTurnoDate(t) === hoyStr);
-  const turnosManana = turnos.filter(t => normalizeTurnoDate(t) === mananaStr);
+  const turnosHoy = turnos.filter((t) => normalizeTurnoDate(t) === hoyStr);
+  const turnosManana = turnos.filter((t) => normalizeTurnoDate(t) === mananaStr);
 
   renderItems(turnosHoy, listaHoy);
   renderItems(turnosManana, listaManana);
@@ -78,23 +98,23 @@ function renderListas(turnos) {
 
 function renderItems(turnos, contenedor) {
   if (turnos.length === 0) {
-    contenedor.innerHTML = `<li class="text-slate-400">Sin turnos</li>`;
+    contenedor.innerHTML = '<li class="text-slate-400">Sin turnos</li>';
     return;
   }
 
-  turnos.forEach(turno => {
-    const li = document.createElement("li");
-    li.className = "bg-slate-50 p-3 rounded-lg flex justify-between items-center";
+  turnos.forEach((turno) => {
+    const li = document.createElement('li');
+    li.className = `p-3 rounded-lg flex justify-between items-center ${turno.estado === 'cancelado' ? 'bg-slate-200' : 'bg-slate-50'}`;
 
     li.innerHTML = `
       <div>
-        <p class="font-medium">${turno.cliente}</p>
+        <p class="font-medium">${turno.cliente} ${turno.apellido}</p>
         <p class="text-sm text-slate-500">
-          ${turno.servicio} - ${String(turno.hora).slice(0, 5)}
+          ${turno.servicio} - ${String(turno.hora).slice(0, 5)} - ${turno.estado}
         </p>
       </div>
       <button data-id="${turno.id}" 
-        class="cancelarTurno bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600">
+        class="cancelarTurno bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600 ${turno.estado === 'cancelado' ? 'hidden' : ''}">
         Cancelar
       </button>
     `;
@@ -103,10 +123,6 @@ function renderItems(turnos, contenedor) {
   });
 }
 
-/* ============================= */
-/* FILTROS */
-/* ============================= */
-
 function aplicarFiltrosLocales() {
   let filtrados = [...cacheTurnos];
 
@@ -114,46 +130,62 @@ function aplicarFiltrosLocales() {
   const fecha = inputFecha.value;
 
   if (nombre) {
-    filtrados = filtrados.filter(t =>
-      t.cliente.toLowerCase().includes(nombre)
-    );
+    filtrados = filtrados.filter((t) => `${t.cliente} ${t.apellido}`.toLowerCase().includes(nombre));
   }
 
   if (fecha) {
-    filtrados = filtrados.filter(t =>
-      normalizeTurnoDate(t) === fecha
-    );
+    filtrados = filtrados.filter((t) => normalizeTurnoDate(t) === fecha);
   }
 
   renderListas(filtrados);
   renderCalendar(filtrados);
 }
 
-/* ============================= */
-/* API */
-/* ============================= */
-
 async function fetchTurnos() {
-  const response = await fetch(`${API_BASE_URL}/turnos`, {
-    method: 'GET',
-    headers: authHeaders(),
-  });
+  const [activosResp, canceladosResp] = await Promise.all([
+    fetch(`${API_BASE_URL}/turnos?estado=activo`, { method: 'GET', headers: authHeaders() }),
+    fetch(`${API_BASE_URL}/turnos?estado=cancelado`, { method: 'GET', headers: authHeaders() }),
+  ]);
 
-  const data = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(data.error || 'Error al cargar turnos');
+  const activos = await activosResp.json().catch(() => ([]));
+  const cancelados = await canceladosResp.json().catch(() => ([]));
+
+  if (!activosResp.ok) throw new Error(activos.error || 'Error al cargar turnos activos');
+  if (!canceladosResp.ok) throw new Error(cancelados.error || 'Error al cargar turnos cancelados');
+
+  return [...activos, ...cancelados];
+}
+
+async function fetchBloqueos() {
+  const response = await fetch(`${API_BASE_URL}/bloqueos`);
+  const data = await response.json().catch(() => []);
+  if (!response.ok) throw new Error(data.error || 'Error cargando bloqueos');
+  return data;
+}
+
+async function fetchFeriados(year) {
+  const response = await fetch(`${API_BASE_URL}/feriados?year=${year}`);
+  const data = await response.json().catch(() => []);
+  if (!response.ok) throw new Error(data.error || 'Error cargando feriados');
   return data;
 }
 
 async function loadTurnos() {
-  const turnos = await fetchTurnos();
+  const [turnos, bloqueos, feriados] = await Promise.all([
+    fetchTurnos(),
+    fetchBloqueos(),
+    fetchFeriados(new Date().getFullYear()),
+  ]);
+
   cacheTurnos = turnos;
+  cacheBloqueos = bloqueos;
   renderListas(turnos);
-  renderCalendar(turnos);
+  renderCalendar(turnos, feriados, bloqueos);
 }
 
 async function cancelarTurno(id) {
-  const response = await fetch(`${API_BASE_URL}/turnos/${id}`, {
-    method: 'DELETE',
+  const response = await fetch(`${API_BASE_URL}/turnos/${id}/cancelar`, {
+    method: 'PATCH',
     headers: authHeaders(),
   });
 
@@ -162,9 +194,17 @@ async function cancelarTurno(id) {
   return data;
 }
 
-/* ============================= */
-/* EVENTOS */
-/* ============================= */
+async function crearBloqueo(fecha, motivo) {
+  const response = await fetch(`${API_BASE_URL}/bloqueos`, {
+    method: 'POST',
+    headers: authHeaders(),
+    body: JSON.stringify({ fecha, motivo }),
+  });
+
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(data.error || 'No se pudo bloquear el día');
+  return data;
+}
 
 function bindEvents() {
   document.getElementById('aplicarFiltros').addEventListener('click', aplicarFiltrosLocales);
@@ -173,7 +213,7 @@ function bindEvents() {
     inputNombre.value = '';
     inputFecha.value = '';
     renderListas(cacheTurnos);
-    renderCalendar(cacheTurnos);
+    renderCalendar(cacheTurnos, [], cacheBloqueos);
   });
 
   inputNombre.addEventListener('input', aplicarFiltrosLocales);
@@ -183,38 +223,48 @@ function bindEvents() {
     if (!btn) return;
 
     const id = btn.dataset.id;
-    if (!confirm("¿Cancelar turno?")) return;
+    if (!confirm('¿Cancelar turno?')) return;
 
     try {
       await cancelarTurno(id);
-      showMessage("Turno cancelado correctamente", false);
+      showMessage('Turno cancelado correctamente', false);
       await loadTurnos();
     } catch (err) {
       showMessage(err.message, true);
     }
   });
 
-  document.getElementById('logoutBtn').addEventListener('click', () => {
-    const confirmar = confirm("¿Seguro que querés cerrar sesión?");
+  document.getElementById('bloquearDia').addEventListener('click', async () => {
+    const fecha = document.getElementById('fechaBloqueo').value;
+    if (!fecha) {
+      showMessage('Seleccioná una fecha para bloquear', true);
+      return;
+    }
 
+    try {
+      await crearBloqueo(fecha, 'Bloqueo manual');
+      showMessage('Día bloqueado correctamente', false);
+      await loadTurnos();
+    } catch (error) {
+      showMessage(error.message, true);
+    }
+  });
+
+  document.getElementById('logoutBtn').addEventListener('click', () => {
+    const confirmar = confirm('¿Seguro que querés cerrar sesión?');
     if (!confirmar) return;
 
     localStorage.removeItem(TOKEN_KEY);
-
     setTimeout(() => {
       window.location.href = './login.html';
     }, 500);
   });
-
 }
 
-/* ============================= */
-/* CALENDARIO */
-/* ============================= */
-
-function renderCalendar(turnos) {
+function renderCalendar(turnos, feriados = [], bloqueos = cacheBloqueos) {
   calendar.removeAllEvents();
   calendar.addEventSource(turnosToEvents(turnos));
+  calendar.addEventSource(buildBackgroundEvents(feriados, bloqueos));
 }
 
 function initCalendar() {
@@ -225,17 +275,17 @@ function initCalendar() {
     eventTimeFormat: { hour: '2-digit', minute: '2-digit', hour12: false },
 
     eventClick: async function (info) {
+      if (info.event.display === 'background') return;
+      if (info.event.extendedProps.estado === 'cancelado') return;
+
       const id = info.event.id;
 
-      const confirmado = confirm(
-        `¿Querés cancelar este turno?\n\n${info.event.title}`
-      );
-
+      const confirmado = confirm(`¿Querés cancelar este turno?\n\n${info.event.title}`);
       if (!confirmado) return;
 
       try {
         await cancelarTurno(id);
-        showMessage("Turno cancelado correctamente", false);
+        showMessage('Turno cancelado correctamente', false);
         await loadTurnos();
       } catch (error) {
         showMessage(error.message, true);
@@ -245,11 +295,6 @@ function initCalendar() {
 
   calendar.render();
 }
-
-
-/* ============================= */
-/* INIT */
-/* ============================= */
 
 async function bootstrap() {
   initCalendar();
