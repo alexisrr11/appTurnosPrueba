@@ -60,6 +60,25 @@ function formatHour(hora) {
   return String(hora || '').slice(0, 5);
 }
 
+function generateHoursBetween(apertura, cierre, duracion) {
+  const [startH = 0, startM = 0] = String(apertura || '').slice(0, 5).split(':').map(Number);
+  const [endH = 0, endM = 0] = String(cierre || '').slice(0, 5).split(':').map(Number);
+  const slotDuration = Number(duracion);
+
+  const startMinutes = startH * 60 + startM;
+  const endMinutes = endH * 60 + endM;
+  if (!slotDuration || endMinutes <= startMinutes) return [];
+
+  const slots = [];
+  for (let current = startMinutes; current + slotDuration <= endMinutes; current += slotDuration) {
+    const hh = String(Math.floor(current / 60)).padStart(2, '0');
+    const mm = String(current % 60).padStart(2, '0');
+    slots.push(`${hh}:${mm}`);
+  }
+
+  return slots;
+}
+
 function mapTurnoToEvent(turno) {
   const hora = turno.hora?.slice(0, 8) || '00:00:00';
   const isOwner = Boolean(turno.is_owner);
@@ -237,19 +256,20 @@ function setupUiEvents() {
   });
 }
 
-function generarOpcionesHora() {
+function generarOpcionesHora(config) {
   const selectHora = document.getElementById('hora');
   if (!selectHora) return;
 
   selectHora.innerHTML = '';
 
-  for (let h = 9; h < 18; h += 1) {
-    const hora = String(h).padStart(2, '0');
+  const horas = generateHoursBetween(config?.hora_apertura || '09:00', config?.hora_cierre || '18:00', config?.duracion_turno || 60);
+
+  horas.forEach((hora) => {
     const option = document.createElement('option');
-    option.value = `${hora}:00`;
-    option.textContent = `${hora}:00`;
+    option.value = hora;
+    option.textContent = hora;
     selectHora.appendChild(option);
-  }
+  });
 }
 
 async function bootstrap() {
@@ -261,9 +281,10 @@ async function bootstrap() {
 
   setupUiEvents();
   initCalendar();
-  generarOpcionesHora();
 
   try {
+    const config = await apiFetch('/configuracion', { method: 'GET' }, true);
+    generarOpcionesHora(config);
     const meData = await apiFetch('/me', { method: 'GET' }, true);
     currentUser = meData.usuario;
     await loadTurnosIntoCalendar();
