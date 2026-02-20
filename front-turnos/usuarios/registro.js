@@ -14,13 +14,14 @@ function showMessage(message, isError = true) {
 }
 
 /**
- * Hace POST /registro usando nombre, email y password.
+ * Hace POST /registro usando nombre, apellido, email y password.
  * Si el registro es exitoso, redirige a login.
  */
 async function handleRegister(event) {
   event.preventDefault();
 
   const nombre = document.getElementById('nombre')?.value?.trim();
+  const apellido = document.getElementById('apellido')?.value?.trim();
   const email = document.getElementById('email')?.value?.trim();
   const password = document.getElementById('password')?.value;
 
@@ -28,7 +29,7 @@ async function handleRegister(event) {
     const response = await fetch(`${API_BASE_URL}/registro`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ nombre, email, password })
+      body: JSON.stringify({ nombre, apellido, email, password })
     });
 
     const data = await response.json();
