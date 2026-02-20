@@ -152,6 +152,37 @@ async function validateTurnoCreation({ fecha, hora, estado = 'activo' }) {
   return null;
 }
 
+function buildTurnoDateTime(fecha, hora) {
+  const dateIso = normalizeDateISO(fecha);
+  const timeIso = normalizeHour(hora) || '00:00';
+  return new Date(`${dateIso}T${timeIso}:00`);
+}
+
+function canCancelWithAnticipation(fecha, hora) {
+  const turnoDate = buildTurnoDateTime(fecha, hora);
+  if (Number.isNaN(turnoDate.getTime())) {
+    return false;
+  }
+
+  const msDiff = turnoDate.getTime() - Date.now();
+  return msDiff >= 24 * 60 * 60 * 1000;
+}
+
+async function hasWeeklyTurnoLimitReached(userId, fecha) {
+  const requestedDate = normalizeDateISO(fecha);
+  const result = await pool.query(
+    `SELECT COUNT(*)::int AS total
+     FROM turnos
+     WHERE usuario_id = $1
+       AND estado = 'activo'
+       AND fecha >= date_trunc('week', $2::date)::date
+       AND fecha < (date_trunc('week', $2::date)::date + INTERVAL '7 day')`,
+    [userId, requestedDate]
+  );
+
+  return Number(result.rows[0]?.total || 0) >= 2;
+}
+
 async function ensureDatabaseUpdates() {
   await pool.query('ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS apellido VARCHAR(100)');
   await pool.query("ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS rol VARCHAR(20) CHECK (rol IN ('admin','user')) DEFAULT 'user'");
@@ -352,6 +383,13 @@ app.post('/turnos', authMiddleware, async (req, res) => {
       return res.status(400).json({ error: validationError });
     }
 
+    if (req.user.rol !== 'admin') {
+      const weeklyLimitReached = await hasWeeklyTurnoLimitReached(req.user.id, fecha);
+      if (weeklyLimitReached) {
+        return res.status(400).json({ error: 'Solo puede reservar hasta 2 turnos por semana' });
+      }
+    }
+
     const result = await pool.query(
       `INSERT INTO turnos (cliente, apellido, servicio, fecha, hora, estado, usuario_id)
        VALUES ($1, $2, $3, $4, $5, 'activo', $6)
@@ -505,7 +543,7 @@ app.get('/turnos', authMiddleware, async (req, res) => {
   const { fecha, fechaDesde, fechaHasta, estado } = req.query;
 
   try {
-    let query = 'SELECT id, cliente, apellido, servicio, fecha, hora, estado, creado_en FROM turnos';
+    let query = 'SELECT id, cliente, apellido, servicio, fecha, hora, estado, creado_en, usuario_id FROM turnos';
     const values = [];
     const conditions = [];
 
@@ -513,8 +551,6 @@ app.get('/turnos', authMiddleware, async (req, res) => {
       values.push(estado || 'activo');
       conditions.push(`estado = $${values.length}`);
     } else {
-      values.push(req.user.id);
-      conditions.push(`usuario_id = $${values.length}`);
       values.push('activo');
       conditions.push(`estado = $${values.length}`);
     }
@@ -538,11 +574,29 @@ app.get('/turnos', authMiddleware, async (req, res) => {
     query += ' ORDER BY fecha ASC, hora ASC';
 
     const resultado = await pool.query(query, values);
-    const turnos = resultado.rows.map((turno) => ({
-      ...turno,
-      fecha: normalizeDateISO(turno.fecha),
-      hora: normalizeHour(turno.hora),
-    }));
+    const turnos = resultado.rows.map((turno) => {
+      const isOwner = turno.usuario_id === req.user.id;
+      const normalizedTurno = {
+        id: turno.id,
+        cliente: req.user.rol === 'admin' || isOwner ? turno.cliente : 'Reservado',
+        apellido: req.user.rol === 'admin' ? turno.apellido : '',
+        servicio: turno.servicio,
+        fecha: normalizeDateISO(turno.fecha),
+        hora: normalizeHour(turno.hora),
+        estado: turno.estado,
+        creado_en: turno.creado_en,
+      };
+
+      if (req.user.rol !== 'admin') {
+        return {
+          ...normalizedTurno,
+          is_owner: isOwner,
+          can_cancel: isOwner && canCancelWithAnticipation(turno.fecha, turno.hora),
+        };
+      }
+
+      return normalizedTurno;
+    });
 
     return res.status(200).json(turnos);
   } catch (error) {
@@ -559,16 +613,46 @@ app.patch('/turnos/:id/cancelar', authMiddleware, async (req, res) => {
   }
 
   try {
-    if (!ensureAdmin(req, res)) return;
+    if (req.user.rol === 'admin') {
+      const result = await pool.query(
+        "UPDATE turnos SET estado = 'cancelado' WHERE id = $1 RETURNING id, cliente, apellido, servicio, fecha, hora, estado",
+        [id]
+      );
+
+      if (result.rows.length === 0) {
+        return res.status(404).json({ error: 'El turno no existe' });
+      }
+
+      return res.status(200).json({ message: 'Turno cancelado correctamente', turno: result.rows[0] });
+    }
+
+    const turnoResult = await pool.query(
+      'SELECT id, cliente, apellido, servicio, fecha, hora, estado, usuario_id FROM turnos WHERE id = $1',
+      [id]
+    );
+
+    if (turnoResult.rows.length === 0) {
+      return res.status(404).json({ error: 'El turno no existe' });
+    }
+
+    const turno = turnoResult.rows[0];
+
+    if (turno.usuario_id !== req.user.id) {
+      return res.status(403).json({ error: 'Solo puede cancelar sus propios turnos' });
+    }
+
+    if (turno.estado !== 'activo') {
+      return res.status(400).json({ error: 'Solo se pueden cancelar turnos activos' });
+    }
+
+    if (!canCancelWithAnticipation(turno.fecha, turno.hora)) {
+      return res.status(400).json({ error: 'Solo se puede cancelar con al menos 24 horas de anticipación' });
+    }
 
     const result = await pool.query(
       "UPDATE turnos SET estado = 'cancelado' WHERE id = $1 RETURNING id, cliente, apellido, servicio, fecha, hora, estado",
       [id]
     );
-
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'El turno no existe' });
-    }
 
     return res.status(200).json({ message: 'Turno cancelado correctamente', turno: result.rows[0] });
   } catch (error) {
