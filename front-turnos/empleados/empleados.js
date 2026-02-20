@@ -3,6 +3,7 @@ const TOKEN_KEY = 'turnos_token';
 let calendar;
 let cacheTurnos = [];
 let cacheBloqueos = [];
+let cacheConfig = null;
 
 const btnConfiguraciones = document.getElementById('btn-configuraciones');
 const configuraciones = document.getElementById('configuraciones');
@@ -58,7 +59,7 @@ function turnosToEvents(turnos) {
   }));
 }
 
-function buildBackgroundEvents(feriados, bloqueos) {
+function buildBackgroundEvents(feriados, bloqueos, config = cacheConfig) {
   const feriadosBg = feriados.map((h) => ({
     display: 'background',
     start: h.date,
@@ -75,7 +76,26 @@ function buildBackgroundEvents(feriados, bloqueos) {
     title: 'Día bloqueado',
   }));
 
-  return [...feriadosBg, ...bloqueosBg];
+  const diasDeshabilitados = [];
+  if (config?.dias_habilitados?.length === 7) {
+    for (let i = 0; i < 90; i += 1) {
+      const base = new Date();
+      base.setHours(0, 0, 0, 0);
+      base.setDate(base.getDate() + i);
+      const day = base.getDay();
+      if (!config.dias_habilitados[day]) {
+        diasDeshabilitados.push({
+          display: 'background',
+          start: base.toISOString().slice(0, 10),
+          allDay: true,
+          backgroundColor: '#fef3c7',
+          title: 'Día deshabilitado por configuración semanal',
+        });
+      }
+    }
+  }
+
+  return [...feriadosBg, ...bloqueosBg, ...diasDeshabilitados];
 }
 
 function renderListas(turnos) {
@@ -163,6 +183,63 @@ async function fetchBloqueos() {
   return data;
 }
 
+async function fetchConfiguracion() {
+  const response = await fetch(`${API_BASE_URL}/configuracion`, { method: 'GET', headers: authHeaders() });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(data.error || 'Error cargando configuración');
+  return data;
+}
+
+async function guardarConfiguracion(payload) {
+  const response = await fetch(`${API_BASE_URL}/configuracion`, {
+    method: 'PUT',
+    headers: authHeaders(),
+    body: JSON.stringify(payload),
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(data.error || 'No se pudo guardar la configuración');
+  return data;
+}
+
+async function desbloquearDia(fecha, motivo) {
+  const response = await fetch(`${API_BASE_URL}/desbloqueos`, {
+    method: 'POST',
+    headers: authHeaders(),
+    body: JSON.stringify({ fecha, motivo }),
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(data.error || 'No se pudo desbloquear el día');
+  return data;
+}
+
+function cargarConfiguracionEnFormulario(config) {
+  if (!config) return;
+  document.getElementById('horaApertura').value = String(config.hora_apertura || '09:00').slice(0, 5);
+  document.getElementById('horaCierre').value = String(config.hora_cierre || '18:00').slice(0, 5);
+  document.getElementById('duracionTurno').value = Number(config.duracion_turno || 60);
+
+  for (let i = 0; i < 7; i += 1) {
+    const select = document.getElementById(`diaSemana${i}`);
+    if (select) {
+      select.value = config.dias_habilitados?.[i] ? 'true' : 'false';
+    }
+  }
+}
+
+function leerConfiguracionDesdeFormulario() {
+  const dias = [];
+  for (let i = 0; i < 7; i += 1) {
+    dias.push(document.getElementById(`diaSemana${i}`)?.value === 'true');
+  }
+
+  return {
+    hora_apertura: document.getElementById('horaApertura').value,
+    hora_cierre: document.getElementById('horaCierre').value,
+    duracion_turno: Number(document.getElementById('duracionTurno').value),
+    dias_habilitados: dias,
+  };
+}
+
 async function fetchFeriados(year) {
   const response = await fetch(`${API_BASE_URL}/feriados?year=${year}`);
   const data = await response.json().catch(() => []);
@@ -171,16 +248,19 @@ async function fetchFeriados(year) {
 }
 
 async function loadTurnos() {
-  const [turnos, bloqueos, feriados] = await Promise.all([
+  const [turnos, bloqueos, feriados, config] = await Promise.all([
     fetchTurnos(),
     fetchBloqueos(),
     fetchFeriados(new Date().getFullYear()),
+    fetchConfiguracion(),
   ]);
 
   cacheTurnos = turnos;
   cacheBloqueos = bloqueos;
+  cacheConfig = config;
+  cargarConfiguracionEnFormulario(config);
   renderListas(turnos);
-  renderCalendar(turnos, feriados, bloqueos);
+  renderCalendar(turnos, feriados, bloqueos, config);
 }
 
 async function validarAdmin() {
@@ -227,7 +307,7 @@ function bindEvents() {
     inputNombre.value = '';
     inputFecha.value = '';
     renderListas(cacheTurnos);
-    renderCalendar(cacheTurnos, [], cacheBloqueos);
+    renderCalendar(cacheTurnos, [], cacheBloqueos, cacheConfig);
   });
 
   inputNombre.addEventListener('input', aplicarFiltrosLocales);
@@ -248,6 +328,17 @@ function bindEvents() {
     }
   });
 
+  document.getElementById('guardarConfiguracion').addEventListener('click', async () => {
+    try {
+      const payload = leerConfiguracionDesdeFormulario();
+      cacheConfig = await guardarConfiguracion(payload);
+      showMessage('Configuración semanal guardada correctamente', false);
+      await loadTurnos();
+    } catch (error) {
+      showMessage(error.message, true);
+    }
+  });
+
   document.getElementById('bloquearDia').addEventListener('click', async () => {
     const fecha = document.getElementById('fechaBloqueo').value;
     if (!fecha) {
@@ -258,6 +349,22 @@ function bindEvents() {
     try {
       await crearBloqueo(fecha, 'Bloqueo manual');
       showMessage('Día bloqueado correctamente', false);
+      await loadTurnos();
+    } catch (error) {
+      showMessage(error.message, true);
+    }
+  });
+
+  document.getElementById('desbloquearDia').addEventListener('click', async () => {
+    const fecha = document.getElementById('fechaBloqueo').value;
+    if (!fecha) {
+      showMessage('Seleccioná una fecha para desbloquear', true);
+      return;
+    }
+
+    try {
+      await desbloquearDia(fecha, 'Desbloqueo manual');
+      showMessage('Día desbloqueado correctamente', false);
       await loadTurnos();
     } catch (error) {
       showMessage(error.message, true);
@@ -275,10 +382,10 @@ function bindEvents() {
   });
 }
 
-function renderCalendar(turnos, feriados = [], bloqueos = cacheBloqueos) {
+function renderCalendar(turnos, feriados = [], bloqueos = cacheBloqueos, config = cacheConfig) {
   calendar.removeAllEvents();
   calendar.addEventSource(turnosToEvents(turnos));
-  calendar.addEventSource(buildBackgroundEvents(feriados, bloqueos));
+  calendar.addEventSource(buildBackgroundEvents(feriados, bloqueos, config));
 }
 
 function initCalendar() {

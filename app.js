@@ -12,8 +12,12 @@ const app = express();
 const PORT = Number(process.env.PORT) || 3000;
 const JWT_SECRET = process.env.JWT_SECRET || 'cambiar_este_secreto_en_prod';
 const SALT_ROUNDS = 10;
-const HORARIOS_BASE = ['09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00'];
-const DIAS_CERRADOS = [0];
+const DEFAULT_CONFIG = {
+  hora_apertura: '09:00',
+  hora_cierre: '18:00',
+  duracion_turno: 60,
+  dias_habilitados: [false, true, true, true, true, true, false],
+};
 
 const holidayCache = new Map();
 
@@ -39,6 +43,40 @@ function createUserToken(userId, rol) {
 
 function normalizeHour(hora) {
   return String(hora || '').slice(0, 5);
+}
+
+
+function getDayIndex(fecha) {
+  const parsed = new Date(`${normalizeDateISO(fecha)}T00:00:00`);
+  if (Number.isNaN(parsed.getTime())) {
+    return null;
+  }
+  return parsed.getDay();
+}
+
+function generateHoursBetween(apertura, cierre, duracion) {
+  const startHour = normalizeHour(apertura);
+  const endHour = normalizeHour(cierre);
+  const slotDuration = Number(duracion);
+
+  const [startH = 0, startM = 0] = startHour.split(':').map(Number);
+  const [endH = 0, endM = 0] = endHour.split(':').map(Number);
+
+  const startMinutes = startH * 60 + startM;
+  const endMinutes = endH * 60 + endM;
+
+  if (slotDuration <= 0 || endMinutes <= startMinutes) {
+    return [];
+  }
+
+  const slots = [];
+  for (let current = startMinutes; current + slotDuration <= endMinutes; current += slotDuration) {
+    const hh = String(Math.floor(current / 60)).padStart(2, '0');
+    const mm = String(current % 60).padStart(2, '0');
+    slots.push(`${hh}:${mm}`);
+  }
+
+  return slots;
 }
 
 function normalizeDateISO(fecha) {
@@ -74,11 +112,84 @@ function getTodayInISO() {
 }
 
 async function getPublicOwnerUserId() {
-  const user = await pool.query('SELECT id FROM usuarios ORDER BY id ASC LIMIT 1');
-  if (user.rows.length === 0) {
+  const user = await pool.query("SELECT id FROM usuarios WHERE rol = 'admin' ORDER BY id ASC LIMIT 1");
+  if (user.rows.length > 0) {
+    return user.rows[0].id;
+  }
+
+  const fallbackUser = await pool.query('SELECT id FROM usuarios ORDER BY id ASC LIMIT 1');
+  if (fallbackUser.rows.length === 0) {
     return null;
   }
-  return user.rows[0].id;
+
+  return fallbackUser.rows[0].id;
+}
+
+async function getOrCreateBusinessConfig(ownerUserId) {
+  if (!ownerUserId) {
+    return {
+      id: null,
+      owner_user_id: null,
+      ...DEFAULT_CONFIG,
+    };
+  }
+
+  const existingConfig = await pool.query(
+    `SELECT id, owner_user_id, hora_apertura, hora_cierre, duracion_turno
+     FROM configuraciones_negocio
+     WHERE owner_user_id = $1
+     LIMIT 1`,
+    [ownerUserId]
+  );
+
+  let configRow = existingConfig.rows[0];
+
+  if (!configRow) {
+    const inserted = await pool.query(
+      `INSERT INTO configuraciones_negocio (owner_user_id, hora_apertura, hora_cierre, duracion_turno)
+       VALUES ($1, $2, $3, $4)
+       RETURNING id, owner_user_id, hora_apertura, hora_cierre, duracion_turno`,
+      [ownerUserId, DEFAULT_CONFIG.hora_apertura, DEFAULT_CONFIG.hora_cierre, DEFAULT_CONFIG.duracion_turno]
+    );
+    configRow = inserted.rows[0];
+  }
+
+  for (let day = 0; day < 7; day += 1) {
+    await pool.query(
+      `INSERT INTO configuracion_dias_semana (configuracion_id, dia_semana, habilitado)
+       VALUES ($1, $2, $3)
+       ON CONFLICT (configuracion_id, dia_semana)
+       DO NOTHING`,
+      [configRow.id, day, DEFAULT_CONFIG.dias_habilitados[day]]
+    );
+  }
+
+  const normalizedDaysResult = await pool.query(
+    `SELECT dia_semana, habilitado
+     FROM configuracion_dias_semana
+     WHERE configuracion_id = $1
+     ORDER BY dia_semana ASC`,
+    [configRow.id]
+  );
+
+  const diasHabilitados = Array(7).fill(false);
+  normalizedDaysResult.rows.forEach((row) => {
+    diasHabilitados[Number(row.dia_semana)] = Boolean(row.habilitado);
+  });
+
+  return {
+    id: configRow.id,
+    owner_user_id: configRow.owner_user_id,
+    hora_apertura: normalizeHour(configRow.hora_apertura),
+    hora_cierre: normalizeHour(configRow.hora_cierre),
+    duracion_turno: Number(configRow.duracion_turno),
+    dias_habilitados: diasHabilitados,
+  };
+}
+
+async function getCurrentBusinessConfig() {
+  const ownerUserId = await getPublicOwnerUserId();
+  return getOrCreateBusinessConfig(ownerUserId);
 }
 
 async function fetchHolidaysByYear(year) {
@@ -108,19 +219,13 @@ async function isHoliday(fecha) {
   return holidays.some((holiday) => holiday.date === isoDate);
 }
 
-function isWithinConfiguredHours(hora) {
-  return HORARIOS_BASE.includes(normalizeHour(hora));
+async function isWithinConfiguredHours(hora) {
+  const config = await getCurrentBusinessConfig();
+  const validHours = generateHoursBetween(config.hora_apertura, config.hora_cierre, config.duracion_turno);
+  return validHours.includes(normalizeHour(hora));
 }
 
-function isBusinessClosed(fecha) {
-  const parsed = new Date(`${normalizeDateISO(fecha)}T00:00:00`);
-  if (Number.isNaN(parsed.getTime())) {
-    return true;
-  }
-  return DIAS_CERRADOS.includes(parsed.getDay());
-}
-
-async function isBlockedDay(fecha) {
+async function isManuallyBlockedDay(fecha) {
   const result = await pool.query(
     'SELECT id FROM dias_bloqueados WHERE fecha = $1 AND activo = true LIMIT 1',
     [normalizeDateISO(fecha)]
@@ -128,16 +233,48 @@ async function isBlockedDay(fecha) {
   return result.rows.length > 0;
 }
 
+async function isManuallyUnlockedDay(fecha) {
+  const result = await pool.query(
+    'SELECT id FROM dias_desbloqueados WHERE fecha = $1 AND activo = true LIMIT 1',
+    [normalizeDateISO(fecha)]
+  );
+  return result.rows.length > 0;
+}
+
+function isDayDisabledBySchedule(fecha, config) {
+  const dayIndex = getDayIndex(fecha);
+  if (dayIndex === null) {
+    return true;
+  }
+
+  return !config.dias_habilitados[dayIndex];
+}
+
+async function isBusinessClosed(fecha) {
+  const config = await getCurrentBusinessConfig();
+  const unlocked = await isManuallyUnlockedDay(fecha);
+
+  if (unlocked) {
+    return false;
+  }
+
+  if (await isManuallyBlockedDay(fecha)) {
+    return true;
+  }
+
+  return isDayDisabledBySchedule(fecha, config);
+}
+
 async function validateTurnoCreation({ fecha, hora, estado = 'activo' }) {
   if (estado !== 'activo') {
     return 'Solo se pueden crear turnos con estado activo';
   }
 
-  if (!isWithinConfiguredHours(hora)) {
+  if (!(await isWithinConfiguredHours(hora))) {
     return 'El horario solicitado está fuera del horario configurado';
   }
 
-  if (isBusinessClosed(fecha)) {
+  if (await isBusinessClosed(fecha)) {
     return 'El negocio se encuentra cerrado en el día solicitado';
   }
 
@@ -145,9 +282,6 @@ async function validateTurnoCreation({ fecha, hora, estado = 'activo' }) {
     return 'No se pueden crear turnos en feriados';
   }
 
-  if (await isBlockedDay(fecha)) {
-    return 'No se pueden crear turnos en días bloqueados';
-  }
 
   return null;
 }
@@ -233,6 +367,42 @@ async function ensureDatabaseUpdates() {
       creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
   `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS configuraciones_negocio (
+      id SERIAL PRIMARY KEY,
+      owner_user_id INTEGER NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
+      hora_apertura TIME NOT NULL,
+      hora_cierre TIME NOT NULL,
+      duracion_turno INTEGER NOT NULL,
+      creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      actualizado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(owner_user_id)
+    )
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS configuracion_dias_semana (
+      id SERIAL PRIMARY KEY,
+      configuracion_id INTEGER NOT NULL REFERENCES configuraciones_negocio(id) ON DELETE CASCADE,
+      dia_semana SMALLINT NOT NULL CHECK (dia_semana >= 0 AND dia_semana <= 6),
+      habilitado BOOLEAN NOT NULL,
+      UNIQUE (configuracion_id, dia_semana)
+    )
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS dias_desbloqueados (
+      id SERIAL PRIMARY KEY,
+      fecha DATE UNIQUE NOT NULL,
+      motivo VARCHAR(255),
+      activo BOOLEAN DEFAULT true,
+      creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  const ownerUserId = await getPublicOwnerUserId();
+  await getOrCreateBusinessConfig(ownerUserId);
 }
 
 async function getUserById(userId) {
@@ -416,9 +586,15 @@ app.get('/turnos/publico/disponibilidad', async (req, res) => {
   }
 
   try {
+    if (await isBusinessClosed(fecha)) {
+      return res.status(200).json({ fecha, ocupadas: [], disponibles: [] });
+    }
+
+    const config = await getCurrentBusinessConfig();
+    const horasBase = generateHoursBetween(config.hora_apertura, config.hora_cierre, config.duracion_turno);
     const result = await pool.query("SELECT hora FROM turnos WHERE fecha = $1 AND estado = 'activo' ORDER BY hora ASC", [fecha]);
     const horasOcupadas = result.rows.map((row) => normalizeHour(row.hora));
-    const disponibles = HORARIOS_BASE.filter((h) => !horasOcupadas.includes(h));
+    const disponibles = horasBase.filter((h) => !horasOcupadas.includes(h));
 
     return res.status(200).json({
       fecha,
@@ -456,9 +632,9 @@ app.get('/turnos/publico/ocupados', async (req, res) => {
       return acc;
     }, {});
 
-    const diasDisponibles = Object.keys(ocupadosPorFecha).filter(
-      (fecha) => ocupadosPorFecha[fecha].length < HORARIOS_BASE.length
-    );
+    const config = await getCurrentBusinessConfig();
+    const horasBase = generateHoursBetween(config.hora_apertura, config.hora_cierre, config.duracion_turno);
+    const diasDisponibles = Object.keys(ocupadosPorFecha).filter((fecha) => ocupadosPorFecha[fecha].length < horasBase.length);
 
     return res.status(200).json({
       desde,
@@ -500,6 +676,8 @@ app.post('/bloqueos', authMiddleware, async (req, res) => {
       [fecha, motivo || null]
     );
 
+    await pool.query('UPDATE dias_desbloqueados SET activo = false WHERE fecha = $1', [normalizeDateISO(fecha)]);
+
     return res.status(200).json(result.rows[0]);
   } catch (error) {
     console.error(error);
@@ -532,6 +710,103 @@ app.patch('/bloqueos/:id', authMiddleware, async (req, res) => {
     }
 
     return res.status(200).json(result.rows[0]);
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
+app.get('/configuracion', authMiddleware, async (req, res) => {
+  try {
+    const config = await getCurrentBusinessConfig();
+    return res.status(200).json(config);
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
+app.put('/configuracion', authMiddleware, async (req, res) => {
+  const { hora_apertura, hora_cierre, duracion_turno, dias_habilitados } = req.body;
+
+  if (!hora_apertura || !hora_cierre || !duracion_turno || !Array.isArray(dias_habilitados) || dias_habilitados.length !== 7) {
+    return res.status(400).json({ error: 'Debe enviar hora_apertura, hora_cierre, duracion_turno y dias_habilitados (7 días)' });
+  }
+
+  const duracion = Number(duracion_turno);
+  if (!Number.isInteger(duracion) || duracion <= 0) {
+    return res.status(400).json({ error: 'duracion_turno debe ser un entero mayor a 0' });
+  }
+
+  if (!generateHoursBetween(hora_apertura, hora_cierre, duracion).length) {
+    return res.status(400).json({ error: 'La combinación de horarios y duración no genera turnos válidos' });
+  }
+
+  try {
+    if (!ensureAdmin(req, res)) return;
+    const ownerUserId = await getPublicOwnerUserId();
+    const config = await getOrCreateBusinessConfig(ownerUserId);
+
+    await pool.query(
+      `UPDATE configuraciones_negocio
+       SET hora_apertura = $1,
+           hora_cierre = $2,
+           duracion_turno = $3,
+           actualizado_en = CURRENT_TIMESTAMP
+       WHERE id = $4`,
+      [normalizeHour(hora_apertura), normalizeHour(hora_cierre), duracion, config.id]
+    );
+
+    for (let day = 0; day < 7; day += 1) {
+      await pool.query(
+        `INSERT INTO configuracion_dias_semana (configuracion_id, dia_semana, habilitado)
+         VALUES ($1, $2, $3)
+         ON CONFLICT (configuracion_id, dia_semana)
+         DO UPDATE SET habilitado = EXCLUDED.habilitado`,
+        [config.id, day, Boolean(dias_habilitados[day])]
+      );
+    }
+
+    const updatedConfig = await getCurrentBusinessConfig();
+    return res.status(200).json(updatedConfig);
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
+app.post('/desbloqueos', authMiddleware, async (req, res) => {
+  const { fecha, motivo } = req.body;
+  if (!fecha) {
+    return res.status(400).json({ error: 'fecha es obligatoria' });
+  }
+
+  try {
+    if (!ensureAdmin(req, res)) return;
+
+    await pool.query('UPDATE dias_bloqueados SET activo = false WHERE fecha = $1', [normalizeDateISO(fecha)]);
+    const result = await pool.query(
+      `INSERT INTO dias_desbloqueados (fecha, motivo, activo)
+       VALUES ($1, $2, true)
+       ON CONFLICT (fecha)
+       DO UPDATE SET motivo = EXCLUDED.motivo, activo = true
+       RETURNING id, fecha, motivo, activo, creado_en`,
+      [fecha, motivo || 'Desbloqueo manual']
+    );
+
+    return res.status(200).json(result.rows[0]);
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
+app.get('/desbloqueos', authMiddleware, async (req, res) => {
+  try {
+    if (!ensureAdmin(req, res)) return;
+    const result = await pool.query('SELECT id, fecha, motivo, activo, creado_en FROM dias_desbloqueados ORDER BY fecha ASC');
+    const desbloqueos = result.rows.map((item) => ({ ...item, fecha: normalizeDateISO(item.fecha) }));
+    return res.status(200).json(desbloqueos);
   } catch (error) {
     console.error(error);
     return res.status(500).json({ error: 'Error interno del servidor' });

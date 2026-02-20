@@ -62,33 +62,55 @@
 
             <div id="configuraciones" class="hidden mt-3">
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-
                     <div>
                         <label class="text-sm font-medium">Hora apertura</label>
-                        <input type="time" id="horaApertura" class="mt-1 w-full rounded-lg border px-3 py-2"
-                            value="09:00">
+                        <input type="time" id="horaApertura" class="mt-1 w-full rounded-lg border px-3 py-2" value="09:00">
                     </div>
 
                     <div>
                         <label class="text-sm font-medium">Hora cierre</label>
-                        <input type="time" id="horaCierre" class="mt-1 w-full rounded-lg border px-3 py-2"
-                            value="18:00">
+                        <input type="time" id="horaCierre" class="mt-1 w-full rounded-lg border px-3 py-2" value="18:00">
                     </div>
 
                     <div>
                         <label class="text-sm font-medium">Duración turno (min)</label>
-                        <input type="number" id="duracionTurno" class="mt-1 w-full rounded-lg border px-3 py-2"
-                            value="60">
+                        <input type="number" id="duracionTurno" class="mt-1 w-full rounded-lg border px-3 py-2" value="60" min="15" step="15">
                     </div>
-
                 </div>
-                <h2 class="text-lg font-semibold m-4">Bloquear día manualmente</h2>
 
-                <div class="flex gap-3">
+                <div class="mt-4">
+                    <h3 class="text-base font-semibold mb-2">Días laborales semanales</h3>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                        <label class="text-sm">Domingo
+                            <select id="diaSemana0" class="mt-1 w-full rounded-lg border px-2 py-2"><option value="true">Habilitado</option><option value="false">Deshabilitado</option></select>
+                        </label>
+                        <label class="text-sm">Lunes
+                            <select id="diaSemana1" class="mt-1 w-full rounded-lg border px-2 py-2"><option value="true">Habilitado</option><option value="false">Deshabilitado</option></select>
+                        </label>
+                        <label class="text-sm">Martes
+                            <select id="diaSemana2" class="mt-1 w-full rounded-lg border px-2 py-2"><option value="true">Habilitado</option><option value="false">Deshabilitado</option></select>
+                        </label>
+                        <label class="text-sm">Miércoles
+                            <select id="diaSemana3" class="mt-1 w-full rounded-lg border px-2 py-2"><option value="true">Habilitado</option><option value="false">Deshabilitado</option></select>
+                        </label>
+                        <label class="text-sm">Jueves
+                            <select id="diaSemana4" class="mt-1 w-full rounded-lg border px-2 py-2"><option value="true">Habilitado</option><option value="false">Deshabilitado</option></select>
+                        </label>
+                        <label class="text-sm">Viernes
+                            <select id="diaSemana5" class="mt-1 w-full rounded-lg border px-2 py-2"><option value="true">Habilitado</option><option value="false">Deshabilitado</option></select>
+                        </label>
+                        <label class="text-sm">Sábado
+                            <select id="diaSemana6" class="mt-1 w-full rounded-lg border px-2 py-2"><option value="true">Habilitado</option><option value="false">Deshabilitado</option></select>
+                        </label>
+                    </div>
+                    <button id="guardarConfiguracion" class="mt-3 bg-blue-700 text-white px-4 py-2 rounded hover:bg-blue-800">Guardar configuración semanal</button>
+                </div>
+
+                <h2 class="text-lg font-semibold mt-6 mb-3">Bloquear / desbloquear día manualmente</h2>
+                <div class="flex flex-wrap gap-3 items-end">
                     <input type="date" id="fechaBloqueo" class="border rounded px-3 py-2">
-                    <button id="bloquearDia" class="bg-red-400 text-white px-4 py-2 rounded">
-                        Día Cerrado
-                    </button>
+                    <button id="bloquearDia" class="bg-red-500 text-white px-4 py-2 rounded">Día Cerrado</button>
+                    <button id="desbloquearDia" class="bg-green-600 text-white px-4 py-2 rounded">Desbloquear Día</button>
                 </div>
             </div>
         </section>

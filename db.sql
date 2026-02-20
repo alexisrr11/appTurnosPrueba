@@ -83,3 +83,31 @@ END $$;
 -- Limpieza futura (NO ejecutar automáticamente):
 -- DELETE FROM turnos
 -- WHERE creado_en < NOW() - INTERVAL '3 years';
+
+
+CREATE TABLE IF NOT EXISTS configuraciones_negocio (
+  id SERIAL PRIMARY KEY,
+  owner_user_id INTEGER NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
+  hora_apertura TIME NOT NULL,
+  hora_cierre TIME NOT NULL,
+  duracion_turno INTEGER NOT NULL,
+  creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  actualizado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE(owner_user_id)
+);
+
+CREATE TABLE IF NOT EXISTS configuracion_dias_semana (
+  id SERIAL PRIMARY KEY,
+  configuracion_id INTEGER NOT NULL REFERENCES configuraciones_negocio(id) ON DELETE CASCADE,
+  dia_semana SMALLINT NOT NULL CHECK (dia_semana >= 0 AND dia_semana <= 6),
+  habilitado BOOLEAN NOT NULL,
+  UNIQUE (configuracion_id, dia_semana)
+);
+
+CREATE TABLE IF NOT EXISTS dias_desbloqueados (
+  id SERIAL PRIMARY KEY,
+  fecha DATE UNIQUE NOT NULL,
+  motivo VARCHAR(255),
+  activo BOOLEAN DEFAULT true,
+  creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
