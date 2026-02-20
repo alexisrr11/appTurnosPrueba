@@ -28,12 +28,13 @@ function buildPublicUser(userRow) {
     nombre: userRow.nombre,
     email: userRow.email,
     apellido: userRow.apellido,
+    rol: userRow.rol,
     creado_en: userRow.creado_en,
   };
 }
 
-function createUserToken(userId) {
-  return jwt.sign({ userId }, JWT_SECRET, { expiresIn: '8h' });
+function createUserToken(userId, rol) {
+  return jwt.sign({ userId, rol }, JWT_SECRET, { expiresIn: '8h' });
 }
 
 function normalizeHour(hora) {
@@ -153,9 +154,13 @@ async function validateTurnoCreation({ fecha, hora, estado = 'activo' }) {
 
 async function ensureDatabaseUpdates() {
   await pool.query('ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS apellido VARCHAR(100)');
+  await pool.query("ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS rol VARCHAR(20) CHECK (rol IN ('admin','user')) DEFAULT 'user'");
   await pool.query("UPDATE usuarios SET apellido = '' WHERE apellido IS NULL");
+  await pool.query("UPDATE usuarios SET rol = 'user' WHERE rol IS NULL");
   await pool.query("ALTER TABLE usuarios ALTER COLUMN apellido SET DEFAULT ''");
   await pool.query('ALTER TABLE usuarios ALTER COLUMN apellido SET NOT NULL');
+  await pool.query("ALTER TABLE usuarios ALTER COLUMN rol SET DEFAULT 'user'");
+  await pool.query('ALTER TABLE usuarios ALTER COLUMN rol SET NOT NULL');
   await pool.query('ALTER TABLE usuarios ALTER COLUMN apellido DROP DEFAULT');
 
   await pool.query('ALTER TABLE turnos ADD COLUMN IF NOT EXISTS apellido VARCHAR(100)');
@@ -199,6 +204,19 @@ async function ensureDatabaseUpdates() {
   `);
 }
 
+async function getUserById(userId) {
+  const user = await pool.query('SELECT id, nombre, apellido, email, rol, creado_en FROM usuarios WHERE id = $1', [userId]);
+  return user.rows[0] || null;
+}
+
+function ensureAdmin(req, res) {
+  if (req.user?.rol !== 'admin') {
+    res.status(403).json({ error: 'Acceso denegado. Solo admin.' });
+    return false;
+  }
+  return true;
+}
+
 function getTurnosCleanupQuery() {
   return "DELETE FROM turnos WHERE creado_en < NOW() - INTERVAL '3 years'";
 }
@@ -236,11 +254,14 @@ app.post('/registro', async (req, res) => {
 
     const passwordHasheado = await bcrypt.hash(password, SALT_ROUNDS);
 
+    const admins = await pool.query("SELECT id FROM usuarios WHERE rol = 'admin' LIMIT 1");
+    const rolNuevoUsuario = admins.rows.length === 0 ? 'admin' : 'user';
+
     const nuevoUsuario = await pool.query(
-      `INSERT INTO usuarios (nombre, apellido, email, password)
-       VALUES ($1, $2, $3, $4)
-       RETURNING id, nombre, apellido, email, creado_en`,
-      [nombre.trim(), (apellido || '').trim(), emailNormalizado, passwordHasheado]
+      `INSERT INTO usuarios (nombre, apellido, email, password, rol)
+       VALUES ($1, $2, $3, $4, $5)
+       RETURNING id, nombre, apellido, email, rol, creado_en`,
+      [nombre.trim(), (apellido || '').trim(), emailNormalizado, passwordHasheado, rolNuevoUsuario]
     );
 
     return res.status(201).json({
@@ -264,7 +285,7 @@ app.post('/login', async (req, res) => {
     const emailNormalizado = email.trim().toLowerCase();
 
     const usuario = await pool.query(
-      `SELECT id, nombre, apellido, email, password, creado_en
+      `SELECT id, nombre, apellido, email, rol, password, creado_en
        FROM usuarios
        WHERE email = $1`,
       [emailNormalizado]
@@ -281,7 +302,7 @@ app.post('/login', async (req, res) => {
       return res.status(401).json({ error: 'Credenciales inválidas' });
     }
 
-    const token = createUserToken(usuarioDB.id);
+    const token = createUserToken(usuarioDB.id, usuarioDB.rol);
 
     return res.status(200).json({
       token,
@@ -295,12 +316,12 @@ app.post('/login', async (req, res) => {
 
 app.get('/me', authMiddleware, async (req, res) => {
   try {
-    const user = await pool.query('SELECT id, nombre, apellido, email, creado_en FROM usuarios WHERE id = $1', [req.userId]);
-    if (user.rows.length === 0) {
+    const user = await getUserById(req.user.id);
+    if (!user) {
       return res.status(404).json({ error: 'Usuario no encontrado' });
     }
 
-    return res.status(200).json({ usuario: user.rows[0] });
+    return res.status(200).json({ usuario: user });
   } catch (error) {
     console.error(error);
     return res.status(500).json({ error: 'Error interno del servidor' });
@@ -309,50 +330,23 @@ app.get('/me', authMiddleware, async (req, res) => {
 
 // CLIENTE PÚBLICO
 app.post('/turnos/publico', async (req, res) => {
-  const { cliente, apellido, servicio, fecha, hora, estado } = req.body;
-
-  if (!cliente || !apellido || !servicio || !fecha || !hora) {
-    return res.status(400).json({ error: 'Todos los campos son obligatorios' });
-  }
-
-  try {
-    const validationError = await validateTurnoCreation({ fecha, hora, estado });
-    if (validationError) {
-      return res.status(400).json({ error: validationError });
-    }
-
-    const ownerId = await getPublicOwnerUserId();
-    if (!ownerId) {
-      return res.status(500).json({ error: 'No hay usuarios administrativos creados para registrar turnos.' });
-    }
-
-    const result = await pool.query(
-      `INSERT INTO turnos (cliente, apellido, servicio, fecha, hora, estado, usuario_id)
-       VALUES ($1, $2, $3, $4, $5, 'activo', $6)
-       RETURNING id, cliente, apellido, servicio, fecha, hora, estado, creado_en`,
-      [cliente.trim(), apellido.trim(), servicio.trim(), fecha, hora, ownerId]
-    );
-
-    return res.status(201).json(result.rows[0]);
-  } catch (error) {
-    if (error.code === '23505') {
-      return res.status(400).json({ error: 'Ya existe un turno activo en esa fecha y hora' });
-    }
-
-    console.error(error);
-    return res.status(500).json({ error: 'Error interno del servidor' });
-  }
+  return res.status(403).json({ error: 'Endpoint deshabilitado. Debe autenticarse y usar POST /turnos.' });
 });
 
 
 app.post('/turnos', authMiddleware, async (req, res) => {
-  const { cliente, apellido, servicio, fecha, hora, estado } = req.body;
+  const { servicio, fecha, hora, estado } = req.body;
 
-  if (!cliente || !apellido || !servicio || !fecha || !hora) {
-    return res.status(400).json({ error: 'Todos los campos son obligatorios' });
+  if (!servicio || !fecha || !hora) {
+    return res.status(400).json({ error: 'servicio, fecha y hora son obligatorios' });
   }
 
   try {
+    const user = await getUserById(req.user.id);
+    if (!user) {
+      return res.status(404).json({ error: 'Usuario no encontrado' });
+    }
+
     const validationError = await validateTurnoCreation({ fecha, hora, estado });
     if (validationError) {
       return res.status(400).json({ error: validationError });
@@ -362,7 +356,7 @@ app.post('/turnos', authMiddleware, async (req, res) => {
       `INSERT INTO turnos (cliente, apellido, servicio, fecha, hora, estado, usuario_id)
        VALUES ($1, $2, $3, $4, $5, 'activo', $6)
        RETURNING id, cliente, apellido, servicio, fecha, hora, estado, creado_en`,
-      [cliente.trim(), apellido.trim(), servicio.trim(), fecha, hora, req.userId]
+      [user.nombre, user.apellido, servicio.trim(), fecha, hora, req.user.id]
     );
 
     return res.status(201).json(result.rows[0]);
@@ -457,6 +451,8 @@ app.post('/bloqueos', authMiddleware, async (req, res) => {
   }
 
   try {
+    if (!ensureAdmin(req, res)) return;
+
     const result = await pool.query(
       `INSERT INTO dias_bloqueados (fecha, motivo, activo)
        VALUES ($1, $2, true)
@@ -482,6 +478,8 @@ app.patch('/bloqueos/:id', authMiddleware, async (req, res) => {
   }
 
   try {
+    if (!ensureAdmin(req, res)) return;
+
     const result = await pool.query(
       `UPDATE dias_bloqueados
        SET activo = COALESCE($1, activo),
@@ -511,8 +509,15 @@ app.get('/turnos', authMiddleware, async (req, res) => {
     const values = [];
     const conditions = [];
 
-    values.push(estado || 'activo');
-    conditions.push(`estado = $${values.length}`);
+    if (req.user.rol === 'admin') {
+      values.push(estado || 'activo');
+      conditions.push(`estado = $${values.length}`);
+    } else {
+      values.push(req.user.id);
+      conditions.push(`usuario_id = $${values.length}`);
+      values.push('activo');
+      conditions.push(`estado = $${values.length}`);
+    }
 
     if (fecha) {
       values.push(fecha);
@@ -554,6 +559,8 @@ app.patch('/turnos/:id/cancelar', authMiddleware, async (req, res) => {
   }
 
   try {
+    if (!ensureAdmin(req, res)) return;
+
     const result = await pool.query(
       "UPDATE turnos SET estado = 'cancelado' WHERE id = $1 RETURNING id, cliente, apellido, servicio, fecha, hora, estado",
       [id]
