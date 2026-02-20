@@ -64,9 +64,13 @@ function mapTurnoToEvent(turno) {
   const hora = turno.hora?.slice(0, 8) || '00:00:00';
   const isOwner = Boolean(turno.is_owner);
 
+  const title = isOwner
+    ? ` ${currentUser?.nombre || 'Usuario'} - ${turno.servicio}`
+    : 'Reservado';
+
   return {
     id: String(turno.id),
-    title: isOwner ? turno.servicio : 'Reservado',
+    title,
     start: `${turno.fecha}T${hora}`,
     backgroundColor: isOwner ? OWN_TURNO_COLOR : RESERVED_TURNO_COLOR,
     borderColor: isOwner ? '#1d4ed8' : '#6b7280',
@@ -230,24 +234,6 @@ function setupUiEvents() {
     if (!confirm('¿Seguro que querés cerrar sesión?')) return;
     localStorage.removeItem(TOKEN_KEY);
     window.location.href = 'login/login.html';
-  });
-
-  document.getElementById('turnosLista')?.addEventListener('click', async (event) => {
-    const button = event.target.closest('.cancelarTurno');
-    if (!button) return;
-
-    const turnoId = button.dataset.id;
-    if (!turnoId) return;
-
-    if (!confirm('¿Querés cancelar tu turno?')) return;
-
-    try {
-      await cancelTurno(turnoId);
-      showTurnoMessage('Turno cancelado correctamente.', false);
-      await loadTurnosIntoCalendar();
-    } catch (error) {
-      showTurnoMessage(error.message, true);
-    }
   });
 }
 
