@@ -183,6 +183,20 @@ async function loadTurnos() {
   renderCalendar(turnos, feriados, bloqueos);
 }
 
+async function validarAdmin() {
+  const response = await fetch(`${API_BASE_URL}/me`, {
+    method: 'GET',
+    headers: authHeaders(),
+  });
+
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(data.error || 'No se pudo validar sesión');
+
+  if (data?.usuario?.rol !== 'admin') {
+    throw new Error('Acceso denegado. Este panel es solo para admin.');
+  }
+}
+
 async function cancelarTurno(id) {
   const response = await fetch(`${API_BASE_URL}/turnos/${id}/cancelar`, {
     method: 'PATCH',
@@ -297,8 +311,14 @@ function initCalendar() {
 }
 
 async function bootstrap() {
+  if (!getToken()) {
+    window.location.href = './login.html';
+    return;
+  }
+
   initCalendar();
   bindEvents();
+  await validarAdmin();
   await loadTurnos();
 }
 

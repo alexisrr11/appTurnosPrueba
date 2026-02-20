@@ -14,17 +14,13 @@ function showAuthState(message, isError = false) {
   if (!box) return;
 
   box.textContent = message;
-  box.classList.remove('hidden', 'bg-red-100', 'text-red-700', 'bg-green-100', 'text-green-700', 'bg-yellow-100', 'text-yellow-700');
-
-  if (isError) {
-    box.classList.add('bg-red-100', 'text-red-700');
-  } else {
-    box.classList.add('bg-green-100', 'text-green-700');
-  }
+  box.classList.remove('hidden', 'bg-red-100', 'text-red-700', 'bg-green-100', 'text-green-700');
+  box.classList.add(isError ? 'bg-red-100' : 'bg-green-100');
+  box.classList.add(isError ? 'text-red-700' : 'text-green-700');
 }
 
 function showTurnoMessage(message, isError = true) {
-  const box = document.getElementById('turnoAlert') || document.getElementById('mensaje');
+  const box = document.getElementById('mensaje');
   if (!box) return;
 
   box.textContent = message;
@@ -42,7 +38,7 @@ async function apiFetch(path, options = {}, includeAuth = false) {
   if (includeAuth) {
     const token = getToken();
     if (!token) {
-      throw new Error('No hay token. Iniciá sesión nuevamente.');
+      throw new Error('No hay sesión activa.');
     }
     headers.Authorization = `Bearer ${token}`;
   }
@@ -72,7 +68,6 @@ function buildBackgroundEvents(holidays = [], bloqueos = []) {
   const feriados = holidays.map((holiday) => ({
     display: 'background',
     start: holiday.date,
-    end: holiday.date,
     allDay: true,
     backgroundColor: HOLIDAY_COLOR,
     title: 'Feriado',
@@ -83,7 +78,6 @@ function buildBackgroundEvents(holidays = [], bloqueos = []) {
     .map((bloqueo) => ({
       display: 'background',
       start: bloqueo.fecha,
-      end: bloqueo.fecha,
       allDay: true,
       backgroundColor: BLOCKED_COLOR,
       title: 'Día bloqueado',
@@ -108,15 +102,8 @@ async function loadTurnosIntoCalendar() {
   calendar.addEventSource(backgrounds);
 }
 
-async function cancelarTurno(turnoId) {
-  await apiFetch(`/turnos/${turnoId}/cancelar`, { method: 'PATCH' }, true);
-  await loadTurnosIntoCalendar();
-}
-
 function initCalendar() {
-  const calendarEl = document.getElementById('calendar');
-
-  calendar = new FullCalendar.Calendar(calendarEl, {
+  calendar = new FullCalendar.Calendar(document.getElementById('calendar'), {
     initialView: 'dayGridMonth',
     locale: 'es',
     headerToolbar: {
@@ -124,19 +111,6 @@ function initCalendar() {
       center: 'title',
       right: 'dayGridMonth,timeGridWeek,timeGridDay'
     },
-    eventClick: async (info) => {
-      if (info.event.display === 'background') return;
-      const event = info.event;
-      const confirmar = confirm(`¿Querés cancelar tu turno?\n${event.title}`);
-      if (!confirmar) return;
-
-      try {
-        await cancelarTurno(event.id);
-        showTurnoMessage('Turno cancelado correctamente.', false);
-      } catch (error) {
-        showTurnoMessage(error.message, true);
-      }
-    }
   });
 
   calendar.render();
@@ -145,18 +119,16 @@ function initCalendar() {
 async function handleCreateTurno(event) {
   event.preventDefault();
 
-  const cliente = document.getElementById('cliente')?.value?.trim();
-  const apellido = document.getElementById('apellido')?.value?.trim();
   const servicio = document.getElementById('servicio')?.value?.trim();
   const fecha = document.getElementById('fecha')?.value;
   const horaRaw = document.getElementById('hora')?.value;
   const hora = horaRaw && horaRaw.length === 5 ? `${horaRaw}:00` : horaRaw;
 
   try {
-    await apiFetch('/turnos/publico', {
+    await apiFetch('/turnos', {
       method: 'POST',
-      body: JSON.stringify({ cliente, apellido, servicio, fecha, hora })
-    });
+      body: JSON.stringify({ servicio, fecha, hora })
+    }, true);
 
     showTurnoMessage('Turno creado correctamente.', false);
     await loadTurnosIntoCalendar();
@@ -170,9 +142,6 @@ function setupUiEvents() {
   document.getElementById('formTurno')?.addEventListener('submit', handleCreateTurno);
 
   document.getElementById('btnLogout')?.addEventListener('click', () => {
-    const confirmar = confirm('¿Seguro que querés cerrar sesión?');
-    if (!confirmar) return;
-
     localStorage.removeItem(TOKEN_KEY);
     window.location.href = 'login/login.html';
   });
@@ -194,6 +163,12 @@ function generarOpcionesHora() {
 }
 
 async function bootstrap() {
+  const token = getToken();
+  if (!token) {
+    window.location.href = 'login/login.html';
+    return;
+  }
+
   setupUiEvents();
   initCalendar();
   generarOpcionesHora();

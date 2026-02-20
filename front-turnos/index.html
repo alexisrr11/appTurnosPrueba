@@ -17,7 +17,7 @@
     <div class="max-w-6xl mx-auto px-4 py-5 flex items-center justify-between gap-4">
       <div>
         <h1 class="text-2xl font-bold">Cliente · Reservar turno</h1>
-        <p class="text-sm text-slate-500">Consultá disponibilidad y reservá sin login.</p>
+        <p class="text-sm text-slate-500">Consultá disponibilidad y reservá con tu sesión.</p>
       </div>
       <button id="btnLogout" class="text-sm rounded-lg bg-slate-900 text-white px-4 py-2 hover:bg-slate-700">
         Cerrar Sesión
@@ -28,15 +28,8 @@
   <main class="max-w-6xl mx-auto px-4 py-6 grid grid-cols-1 lg:grid-cols-5 gap-6">
     <section class="lg:col-span-2 bg-white rounded-xl shadow p-5">
       <h2 class="text-lg font-semibold">Nuevo turno</h2>
+      <p id="estadoAuth" class="hidden mt-3 text-sm rounded-lg px-3 py-2"></p>
       <form id="formTurno" class="mt-4 space-y-3">
-        <div>
-          <label for="cliente" class="text-sm font-medium">Nombre</label>
-          <input id="cliente" type="text" required class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2" />
-        </div>
-        <div>
-          <label for="apellido" class="text-sm font-medium">Apellido</label>
-          <input id="apellido" type="text" required class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2" />
-        </div>
         <div>
           <label for="servicio" class="text-sm font-medium">Servicio</label>
           <input id="servicio" type="text" required class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2" />
@@ -52,7 +45,7 @@
         <p id="mensaje" class="hidden text-sm rounded-lg px-3 py-2"></p>
         <button class="w-full rounded-lg bg-blue-600 text-white px-4 py-2 hover:bg-blue-700">Reservar</button>
       </form>
-      <p class="mt-3 text-xs text-slate-500">Solo se muestra disponibilidad y horarios ocupados desde hoy.</p>
+      <p class="mt-3 text-xs text-slate-500">Tu nombre y apellido se toman automáticamente de tu usuario autenticado.</p>
     </section>
 
     <section class="lg:col-span-3 bg-white rounded-xl shadow p-4">

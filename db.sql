@@ -3,6 +3,7 @@ CREATE TABLE IF NOT EXISTS usuarios (
   id SERIAL PRIMARY KEY,
   nombre VARCHAR(100) NOT NULL,
   apellido VARCHAR(100) NOT NULL,
+  rol VARCHAR(20) NOT NULL CHECK (rol IN ('admin','user')) DEFAULT 'user',
   email VARCHAR(150) NOT NULL UNIQUE,
   password VARCHAR(255) NOT NULL,
   creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -35,9 +36,13 @@ CREATE TABLE IF NOT EXISTS dias_bloqueados (
 
 -- Alter para bases ya existentes (sin perder datos)
 ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS apellido VARCHAR(100);
+ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS rol VARCHAR(20) CHECK (rol IN ('admin','user')) DEFAULT 'user';
 UPDATE usuarios SET apellido = '' WHERE apellido IS NULL;
+UPDATE usuarios SET rol = 'user' WHERE rol IS NULL;
 ALTER TABLE usuarios ALTER COLUMN apellido SET DEFAULT '';
 ALTER TABLE usuarios ALTER COLUMN apellido SET NOT NULL;
+ALTER TABLE usuarios ALTER COLUMN rol SET DEFAULT 'user';
+ALTER TABLE usuarios ALTER COLUMN rol SET NOT NULL;
 ALTER TABLE usuarios ALTER COLUMN apellido DROP DEFAULT;
 
 ALTER TABLE turnos ADD COLUMN IF NOT EXISTS usuario_id INTEGER;
