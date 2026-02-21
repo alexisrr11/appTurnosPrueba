@@ -9,6 +9,7 @@
     <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.css" rel="stylesheet" />
     <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js"></script>
     <script defer src="empleados.js"></script>
+    <style>html{scroll-behavior: smooth;}</style>
 </head>
 
 <body class="min-h-screen bg-slate-100 text-slate-900">
@@ -42,10 +43,12 @@
                 </div>
 
                 <div class="flex items-end">
-                    <button id="aplicarFiltros"
-                        class="w-full rounded-lg bg-blue-900 text-white px-4 py-2 hover:bg-blue-800">
+                    <a 
+                        href="#proximos" 
+                        id="aplicarFiltros"
+                        class="w-full rounded-lg bg-blue-900 text-white px-4 py-2 text-center hover:bg-blue-800">
                         Buscar
-                    </button>
+                    </a>
                 </div>
 
                 <div class="flex items-end">
@@ -109,14 +112,14 @@
                 <h2 class="text-lg font-semibold mt-6 mb-3">Bloquear / desbloquear día manualmente</h2>
                 <div class="flex flex-wrap gap-3 items-end">
                     <input type="date" id="fechaBloqueo" class="border rounded px-3 py-2">
-                    <button id="bloquearDia" class="bg-red-500 text-white px-4 py-2 rounded">Día Cerrado</button>
-                    <button id="desbloquearDia" class="bg-green-600 text-white px-4 py-2 rounded">Desbloquear Día</button>
+                    <button id="bloquearDia" class="bg-red-600/80 text-white px-4 py-2 rounded hover:bg-red-700/80">Día Cerrado</button>
+                    <button id="desbloquearDia" class="bg-green-600/70 text-white px-4 py-2 rounded hover:bg-green-700/70">Desbloquear Día</button>
                 </div>
             </div>
         </section>
 
         <section class="bg-white rounded-xl shadow p-4">
-            <h2 class="text-lg font-semibold mb-3">Próximos turnos</h2>
+            <h2 id="proximos" class="text-lg font-semibold mb-3">Próximos turnos</h2>
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
