@@ -29,6 +29,7 @@ export default function authMiddleware(req, res, next) {
     req.user = {
       id: decoded.userId,
       rol: decoded.rol || 'user',
+      negocio_id: decoded.negocio_id || null,
     };
     req.userId = decoded.userId;
 
