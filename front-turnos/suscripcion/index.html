@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Suscripción | TurnosPro</title>
+  <style>
+    :root {
+      --bg: #f8fafc;
+      --surface: #ffffff;
+      --text: #0f172a;
+      --muted: #475569;
+      --primary: #2563eb;
+      --primary-hover: #1d4ed8;
+      --border: #e2e8f0;
+      --success: #16a34a;
+      --shadow: 0 20px 35px -18px rgba(15, 23, 42, 0.25);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: "Inter", "Segoe UI", Roboto, sans-serif;
+    }
+
+    body {
+      min-height: 100vh;
+      background: linear-gradient(180deg, #f8fafc 0%, #eef2ff 100%);
+      color: var(--text);
+    }
+
+    .container {
+      width: min(1100px, 92%);
+      margin: 0 auto;
+    }
+
+    .header {
+      padding: 1.25rem 0;
+      border-bottom: 1px solid rgba(148, 163, 184, 0.25);
+      backdrop-filter: blur(5px);
+    }
+
+    .header-content {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .logo {
+      font-size: 1.4rem;
+      font-weight: 800;
+      letter-spacing: 0.02em;
+      color: var(--text);
+      text-decoration: none;
+    }
+
+    .login-btn {
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 0.6rem 1.1rem;
+      background: var(--surface);
+      color: var(--text);
+      font-weight: 600;
+      text-decoration: none;
+      transition: all 0.2s ease;
+    }
+
+    .login-btn:hover {
+      border-color: var(--primary);
+      color: var(--primary);
+      transform: translateY(-1px);
+    }
+
+    .hero {
+      text-align: center;
+      padding: 3.2rem 0 1.4rem;
+    }
+
+    .hero h1 {
+      font-size: clamp(1.8rem, 3vw, 2.7rem);
+      line-height: 1.15;
+      margin-bottom: 0.8rem;
+    }
+
+    .hero p {
+      color: var(--muted);
+      max-width: 650px;
+      margin: 0 auto;
+      font-size: 1.05rem;
+    }
+
+    .plans {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 1.4rem;
+      align-items: stretch;
+      padding: 1.7rem 0 3rem;
+    }
+
+    .plan-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 1.1rem;
+      padding: 1.5rem;
+      box-shadow: var(--shadow);
+      display: flex;
+      flex-direction: column;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .plan-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 24px 40px -22px rgba(15, 23, 42, 0.35);
+    }
+
+    .plan-badge {
+      align-self: flex-start;
+      border-radius: 999px;
+      padding: 0.25rem 0.7rem;
+      font-size: 0.8rem;
+      font-weight: 700;
+      margin-bottom: 0.85rem;
+    }
+
+    .plan-badge.free {
+      color: #1d4ed8;
+      background: #dbeafe;
+    }
+
+    .plan-badge.premium {
+      color: #7c3aed;
+      background: #ede9fe;
+    }
+
+    .plan-card h2 {
+      font-size: 1.3rem;
+      margin-bottom: 0.35rem;
+    }
+
+    .price {
+      font-size: 1.8rem;
+      font-weight: 800;
+      margin-bottom: 1rem;
+    }
+
+    .price span {
+      font-size: 0.95rem;
+      color: var(--muted);
+      font-weight: 500;
+    }
+
+    .features {
+      list-style: none;
+      display: grid;
+      gap: 0.65rem;
+      margin-bottom: 1.4rem;
+      color: var(--muted);
+    }
+
+    .features li {
+      display: flex;
+      align-items: center;
+      gap: 0.55rem;
+      font-size: 0.96rem;
+    }
+
+    .check {
+      color: var(--success);
+      font-weight: 800;
+    }
+
+    .plan-btn {
+      margin-top: auto;
+      border: none;
+      border-radius: 0.75rem;
+      padding: 0.8rem;
+      font-size: 0.95rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background-color 0.2s ease, transform 0.2s ease;
+    }
+
+    .plan-btn.free {
+      background: var(--primary);
+      color: white;
+    }
+
+    .plan-btn.free:hover {
+      background: var(--primary-hover);
+      transform: translateY(-1px);
+    }
+
+    .plan-btn.premium {
+      background: #cbd5e1;
+      color: #475569;
+      cursor: not-allowed;
+    }
+
+    @media (max-width: 640px) {
+      .hero {
+        padding-top: 2.3rem;
+      }
+
+      .plan-card {
+        padding: 1.2rem;
+      }
+    }
+  </style>
+  <script defer src="suscripcion.js"></script>
+</head>
+<body>
+  <header class="header">
+    <div class="container header-content">
+      <a href="../index.html" class="logo">TurnosPro</a>
+      <a href="../login/login.html" class="login-btn">Iniciar sesión</a>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="hero">
+      <h1>Elegí el plan ideal para tu negocio</h1>
+      <p>
+        Comenzá hoy mismo con una prueba gratuita y descubrí cómo TurnosPro simplifica la gestión
+        de turnos para equipos multi-tenant.
+      </p>
+    </section>
+
+    <section class="plans" aria-label="Planes de suscripción">
+      <article class="plan-card">
+        <span class="plan-badge free">Recomendado</span>
+        <h2>Plan Gratuito (10 días)</h2>
+        <p class="price">$0 <span>/ prueba</span></p>
+        <ul class="features">
+          <li><span class="check">✔</span>Gestión de turnos</li>
+          <li><span class="check">✔</span>Dashboard admin</li>
+          <li><span class="check">✔</span>Multi-empleados</li>
+          <li><span class="check">✔</span>10 días gratis</li>
+        </ul>
+        <button id="btnPlanFree" class="plan-btn free" type="button">Comenzar gratis</button>
+      </article>
+
+      <article class="plan-card">
+        <span class="plan-badge premium">Plan avanzado</span>
+        <h2>Plan Premium</h2>
+        <p class="price">Próximamente</p>
+        <ul class="features">
+          <li><span class="check">✔</span>Todo lo del plan gratuito</li>
+          <li><span class="check">✔</span>Métricas avanzadas</li>
+          <li><span class="check">✔</span>Prioridad de soporte</li>
+          <li><span class="check">✔</span>Más funcionalidades en camino</li>
+        </ul>
+        <button class="plan-btn premium" type="button" disabled>Próximamente</button>
+      </article>
+    </section>
+  </main>
+</body>
+</html>
