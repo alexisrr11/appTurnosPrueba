@@ -1,3 +1,12 @@
+CREATE TABLE IF NOT EXISTS negocios (
+  id SERIAL PRIMARY KEY,
+  nombre VARCHAR(100) NOT NULL,
+  fecha_inicio_prueba DATE NOT NULL,
+  fecha_fin_prueba DATE NOT NULL,
+  activo BOOLEAN DEFAULT true,
+  creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 -- Tabla de usuarios
 CREATE TABLE IF NOT EXISTS usuarios (
   id SERIAL PRIMARY KEY,
@@ -5,7 +14,9 @@ CREATE TABLE IF NOT EXISTS usuarios (
   apellido VARCHAR(100) NOT NULL,
   rol VARCHAR(20) NOT NULL CHECK (rol IN ('admin','user')) DEFAULT 'user',
   email VARCHAR(150) NOT NULL UNIQUE,
+  celular VARCHAR(20) NOT NULL,
   password VARCHAR(255) NOT NULL,
+  negocio_id INTEGER REFERENCES negocios(id) ON DELETE CASCADE,
   creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -19,23 +30,28 @@ CREATE TABLE IF NOT EXISTS turnos (
   hora TIME NOT NULL,
   estado VARCHAR(20) CHECK (estado IN ('activo','cancelado','completado')) DEFAULT 'activo',
   usuario_id INTEGER NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
+  negocio_id INTEGER REFERENCES negocios(id) ON DELETE CASCADE,
   creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE UNIQUE INDEX IF NOT EXISTS turnos_unicos_activos
-ON turnos (fecha, hora)
+ON turnos (fecha, hora, negocio_id)
 WHERE estado = 'activo';
 
 CREATE TABLE IF NOT EXISTS dias_bloqueados (
   id SERIAL PRIMARY KEY,
-  fecha DATE UNIQUE NOT NULL,
+  fecha DATE NOT NULL,
+  negocio_id INTEGER NOT NULL REFERENCES negocios(id) ON DELETE CASCADE,
   motivo VARCHAR(255),
   activo BOOLEAN DEFAULT true,
-  creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE(fecha, negocio_id)
 );
 
 -- Alter para bases ya existentes (sin perder datos)
 ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS apellido VARCHAR(100);
+ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS celular VARCHAR(20);
+ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS negocio_id INTEGER REFERENCES negocios(id) ON DELETE CASCADE;
 ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS rol VARCHAR(20) CHECK (rol IN ('admin','user')) DEFAULT 'user';
 UPDATE usuarios SET apellido = '' WHERE apellido IS NULL;
 UPDATE usuarios SET rol = 'user' WHERE rol IS NULL;
@@ -46,6 +62,7 @@ ALTER TABLE usuarios ALTER COLUMN rol SET NOT NULL;
 ALTER TABLE usuarios ALTER COLUMN apellido DROP DEFAULT;
 
 ALTER TABLE turnos ADD COLUMN IF NOT EXISTS usuario_id INTEGER;
+ALTER TABLE turnos ADD COLUMN IF NOT EXISTS negocio_id INTEGER REFERENCES negocios(id) ON DELETE CASCADE;
 ALTER TABLE turnos ADD COLUMN IF NOT EXISTS apellido VARCHAR(100);
 UPDATE turnos SET apellido = cliente WHERE apellido IS NULL OR apellido = '';
 ALTER TABLE turnos ALTER COLUMN apellido SET NOT NULL;
@@ -80,20 +97,15 @@ BEGIN
   END IF;
 END $$;
 
--- Limpieza futura (NO ejecutar automáticamente):
--- DELETE FROM turnos
--- WHERE creado_en < NOW() - INTERVAL '3 years';
-
-
 CREATE TABLE IF NOT EXISTS configuraciones_negocio (
   id SERIAL PRIMARY KEY,
-  owner_user_id INTEGER NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
+  negocio_id INTEGER NOT NULL REFERENCES negocios(id) ON DELETE CASCADE,
   hora_apertura TIME NOT NULL,
   hora_cierre TIME NOT NULL,
   duracion_turno INTEGER NOT NULL,
   creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   actualizado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  UNIQUE(owner_user_id)
+  UNIQUE(negocio_id)
 );
 
 CREATE TABLE IF NOT EXISTS configuracion_dias_semana (
@@ -106,8 +118,10 @@ CREATE TABLE IF NOT EXISTS configuracion_dias_semana (
 
 CREATE TABLE IF NOT EXISTS dias_desbloqueados (
   id SERIAL PRIMARY KEY,
-  fecha DATE UNIQUE NOT NULL,
+  fecha DATE NOT NULL,
+  negocio_id INTEGER NOT NULL REFERENCES negocios(id) ON DELETE CASCADE,
   motivo VARCHAR(255),
   activo BOOLEAN DEFAULT true,
-  creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE(fecha, negocio_id)
 );

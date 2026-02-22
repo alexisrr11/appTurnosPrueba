@@ -24,12 +24,15 @@ async function handleRegister(event) {
   const apellido = document.getElementById('apellido')?.value?.trim();
   const email = document.getElementById('email')?.value?.trim();
   const password = document.getElementById('password')?.value;
+  const celular = document.getElementById('celular')?.value?.trim();
+  const negocioIdRaw = document.getElementById('negocio_id')?.value;
+  const negocio_id = negocioIdRaw ? Number(negocioIdRaw) : undefined;
 
   try {
     const response = await fetch(`${API_BASE_URL}/registro`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ nombre, apellido, email, password })
+      body: JSON.stringify({ nombre, apellido, email, password, celular, negocio_id })
     });
 
     const data = await response.json();

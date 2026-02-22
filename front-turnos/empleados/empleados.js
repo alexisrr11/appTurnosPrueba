@@ -51,7 +51,7 @@ function normalizeTurnoDate(turno) {
 function turnosToEvents(turnos) {
   return turnos.map((turno) => ({
     id: String(turno.id),
-    title: `${turno.cliente} ${turno.apellido} - ${turno.servicio}`,
+    title: `${turno.cliente} ${turno.apellido} (${turno.celular || 'sin celular'}) - ${turno.servicio}`,
     start: `${normalizeTurnoDate(turno)}T${String(turno.hora).slice(0, 8)}`,
     backgroundColor: turno.estado === 'cancelado' ? '#9ca3af' : '#2563eb',
     borderColor: turno.estado === 'cancelado' ? '#6b7280' : '#1d4ed8',
@@ -130,7 +130,7 @@ function renderItems(turnos, contenedor) {
       <div>
         <p class="font-medium">${turno.cliente} ${turno.apellido}</p>
         <p class="text-sm text-slate-500">
-          ${turno.servicio} - ${String(turno.hora).slice(0, 5)} - ${turno.estado}
+          ${turno.servicio} - ${String(turno.hora).slice(0, 5)} - ${turno.estado} - ${turno.celular || 'sin celular'}
         </p>
       </div>
       <button data-id="${turno.id}" 
@@ -238,6 +238,13 @@ function leerConfiguracionDesdeFormulario() {
     duracion_turno: Number(document.getElementById('duracionTurno').value),
     dias_habilitados: dias,
   };
+}
+
+async function fetchRefreshData() {
+  const response = await fetch(`${API_BASE_URL}/refresh`, { method: 'GET', headers: authHeaders() });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(data.error || 'Error al refrescar datos');
+  return data;
 }
 
 async function fetchFeriados(year) {
@@ -366,6 +373,19 @@ function bindEvents() {
       await desbloquearDia(fecha, 'Desbloqueo manual');
       showMessage('Día desbloqueado correctamente', false);
       await loadTurnos();
+    } catch (error) {
+      showMessage(error.message, true);
+    }
+  });
+
+  document.getElementById('btn-actualizar-datos').addEventListener('click', async () => {
+    try {
+      const data = await fetchRefreshData();
+      cacheTurnos = data.turnos || [];
+      cacheConfig = data.configuracion || cacheConfig;
+      renderListas(cacheTurnos);
+      renderCalendar(cacheTurnos, [], cacheBloqueos, cacheConfig);
+      showMessage('Datos actualizados correctamente', false);
     } catch (error) {
       showMessage(error.message, true);
     }

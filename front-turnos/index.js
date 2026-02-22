@@ -173,7 +173,7 @@ async function loadTurnosIntoCalendar() {
   const [turnos, feriados, bloqueos] = await Promise.all([
     apiFetch('/turnos', { method: 'GET' }, true),
     apiFetch(`/feriados?year=${year}`),
-    apiFetch('/bloqueos'),
+    apiFetch(`/bloqueos?negocio_id=${currentUser?.negocio_id}`),
   ]);
 
 

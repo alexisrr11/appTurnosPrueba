@@ -14,12 +14,13 @@ async function register(event) {
   const nombre = document.getElementById('nombre').value.trim();
   const email = document.getElementById('email').value.trim();
   const password = document.getElementById('password').value;
+  const celular = document.getElementById('celular').value.trim();
 
   try {
     const response = await fetch(`${API_BASE_URL}/registro`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ nombre, email, password }),
+      body: JSON.stringify({ nombre, email, password, celular }),
     });
 
     const data = await response.json().catch(() => ({}));
