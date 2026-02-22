@@ -522,7 +522,7 @@ app.get('/feriados', async (req, res) => {
 
 // AUTH
 app.post('/registro', async (req, res) => {
-  const { nombre, apellido, email, password, celular, negocio_id } = req.body;
+  const { nombre, apellido, email, password, celular, negocio_id, nombre_negocio } = req.body;
 
   if (!nombre || !email || !password || !celular) {
     return res.status(400).json({ error: 'nombre, email, password y celular son obligatorios' });
@@ -532,53 +532,85 @@ app.post('/registro', async (req, res) => {
     return res.status(400).json({ error: 'El celular debe contener solo números y opcional +' });
   }
 
+  const client = await pool.connect();
+
   try {
+    await client.query('BEGIN');
+
     const emailNormalizado = email.trim().toLowerCase();
-    const usuarioExistente = await pool.query('SELECT id FROM usuarios WHERE email = $1', [emailNormalizado]);
+    const usuarioExistente = await client.query('SELECT id FROM usuarios WHERE email = $1', [emailNormalizado]);
 
     if (usuarioExistente.rows.length > 0) {
+      await client.query('ROLLBACK');
       return res.status(400).json({ error: 'Ese email ya está registrado' });
     }
 
-    const passwordHasheado = await bcrypt.hash(password, SALT_ROUNDS);
+    const admins = await client.query("SELECT id FROM usuarios WHERE rol = 'admin' LIMIT 1");
+    const rolSolicitado = String(req.body.rol || '').trim().toLowerCase();
+    const rolNuevoUsuario = rolSolicitado === 'admin' ? 'admin' : (admins.rows.length === 0 ? 'admin' : 'user');
 
-    const admins = await pool.query("SELECT id FROM usuarios WHERE rol = 'admin' LIMIT 1");
-    const rolNuevoUsuario = admins.rows.length === 0 ? 'admin' : 'user';
+    const passwordHasheado = await bcrypt.hash(password, SALT_ROUNDS);
     let negocioId = null;
 
     if (rolNuevoUsuario === 'admin') {
-      const nuevoNegocio = await pool.query(
+      const negocioNombreNormalizado = String(nombre_negocio || '').trim();
+      if (!negocioNombreNormalizado) {
+        await client.query('ROLLBACK');
+        return res.status(400).json({ error: 'nombre_negocio es obligatorio para admins' });
+      }
+
+      const negocioExistente = await client.query(
+        'SELECT id FROM negocios WHERE LOWER(nombre) = LOWER($1) LIMIT 1',
+        [negocioNombreNormalizado]
+      );
+
+      if (negocioExistente.rows.length > 0) {
+        await client.query('ROLLBACK');
+        return res.status(400).json({ error: 'El nombre del negocio ya existe. Por favor elija otro.' });
+      }
+
+      const nuevoNegocio = await client.query(
         `INSERT INTO negocios (nombre, fecha_inicio_prueba, fecha_fin_prueba, activo)
          VALUES ($1, CURRENT_DATE, CURRENT_DATE + INTERVAL '10 days', true)
          RETURNING id`,
-        [`Negocio ${nombre.trim()}`]
+        [negocioNombreNormalizado]
       );
+
       negocioId = nuevoNegocio.rows[0].id;
     } else {
       if (!negocio_id) {
+        await client.query('ROLLBACK');
         return res.status(400).json({ error: 'negocio_id es obligatorio para usuarios normales' });
       }
-      const negocio = await pool.query('SELECT id FROM negocios WHERE id = $1', [Number(negocio_id)]);
+
+      const negocio = await client.query('SELECT id FROM negocios WHERE id = $1', [Number(negocio_id)]);
       if (negocio.rows.length === 0) {
+        await client.query('ROLLBACK');
         return res.status(400).json({ error: 'El negocio indicado no existe' });
       }
+
       negocioId = Number(negocio_id);
     }
 
-    const nuevoUsuario = await pool.query(
+    const nuevoUsuario = await client.query(
       `INSERT INTO usuarios (nombre, apellido, email, password, rol, celular, negocio_id)
        VALUES ($1, $2, $3, $4, $5, $6, $7)
        RETURNING id, nombre, apellido, email, celular, rol, negocio_id, creado_en`,
       [nombre.trim(), (apellido || '').trim(), emailNormalizado, passwordHasheado, rolNuevoUsuario, celular.trim(), negocioId]
     );
 
+    await client.query('COMMIT');
+
     return res.status(201).json({
       message: 'Usuario registrado correctamente',
       usuario: buildPublicUser(nuevoUsuario.rows[0]),
     });
   } catch (error) {
+    await client.query('ROLLBACK');
     console.error(error);
     return res.status(500).json({ error: 'Error interno del servidor' });
+  } finally {
+    client.release();
   }
 });
 
