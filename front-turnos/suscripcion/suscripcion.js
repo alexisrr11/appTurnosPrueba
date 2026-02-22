@@ -8,7 +8,7 @@ document.addEventListener("DOMContentLoaded", () => {
   // Si existe el botón, redirige al registro con el parámetro del plan seleccionado.
   if (freePlanButton) {
     freePlanButton.addEventListener("click", () => {
-      window.location.href = "/usuarios/registro.html?plan=free";
+      window.location.href = "../empleados/registro.html?plan=free";
     });
   }
 });

@@ -32,7 +32,7 @@ async function register(event) {
 
     showMessage('Registro correcto. Redirigiendo al login...', false);
     setTimeout(() => {
-      window.location.href = '/empleado/login.html';
+      window.location.href = '/login.html';
     }, 700);
   } catch (error) {
     showMessage(error.message, true);
